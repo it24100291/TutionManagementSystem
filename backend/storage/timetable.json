@@ -1,0 +1,83 @@
+[
+    {
+        "grade": "Grade 6",
+        "teacher_id": "mr_perera",
+        "teacher": "Mr. Perera",
+        "subject": "Mathematics",
+        "day": "Monday",
+        "time": "15:00 - 16:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "ms_silva",
+        "teacher": "Ms. Silva",
+        "subject": "Science",
+        "day": "Monday",
+        "time": "16:00 - 17:00",
+        "room": "Hall 4"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "mr_fernando",
+        "teacher": "Mr. Fernando",
+        "subject": "English",
+        "day": "Tuesday",
+        "time": "17:00 - 18:00",
+        "room": "Hall 2"
+    },
+    {
+        "grade": "Grade 7",
+        "teacher_id": "mrs_jayasinghe",
+        "teacher": "Mrs. Jayasinghe",
+        "subject": "History",
+        "day": "Wednesday",
+        "time": "15:00 - 16:00",
+        "room": "Hall 3"
+    },
+    {
+        "grade": "Grade 8",
+        "teacher_id": "mr_kumar",
+        "teacher": "Mr. Kumar",
+        "subject": "ICT",
+        "day": "Thursday",
+        "time": "16:00 - 17:00",
+        "room": "Hall 6"
+    },
+    {
+        "grade": "Grade 8",
+        "teacher_id": "mr_fernando",
+        "teacher": "Mr. Fernando",
+        "subject": "English",
+        "day": "Saturday",
+        "time": "08:00 - 09:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 9",
+        "teacher_id": "ms_silva",
+        "teacher": "Ms. Silva",
+        "subject": "Science",
+        "day": "Saturday",
+        "time": "14:00 - 15:00",
+        "room": "Hall 5"
+    },
+    {
+        "grade": "Grade 10",
+        "teacher_id": "mr_perera",
+        "teacher": "Mr. Perera",
+        "subject": "Mathematics",
+        "day": "Sunday",
+        "time": "17:00 - 18:00",
+        "room": "Hall 2"
+    },
+    {
+        "grade": "Grade 11",
+        "teacher_id": "ms_silva",
+        "teacher": "Ms. Silva",
+        "subject": "Science",
+        "day": "Tuesday",
+        "time": "16:00 - 17:00",
+        "room": "Hall 6"
+    }
+]
