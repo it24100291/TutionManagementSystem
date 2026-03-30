@@ -3,7 +3,8 @@
     "description": "User Management REST API",
     "require": {
         "php": ">=8.0",
-        "firebase/php-jwt": "^6.0"
+        "firebase/php-jwt": "^6.0",
+        "phpmailer/phpmailer": "^7.0"
     },
     "autoload": {
         "psr-4": {

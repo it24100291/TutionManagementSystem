@@ -5,10 +5,11 @@ import axios from '../api/axios';
 const initialStats = {
   totalStudents: 0,
   totalTutors: 0,
-  totalClasses: 0,
   totalIncome: 0,
   pendingPayments: 0,
   activeUsers: 0,
+  salaryDetails: 0,
+  attendanceRecords: 0,
 };
 
 const statCards = [
@@ -25,13 +26,6 @@ const statCards = [
     icon: 'TU',
     tone: 'tutors',
     route: '/admin/dashboard/tutors',
-  },
-  {
-    key: 'totalClasses',
-    title: 'Total Classes',
-    icon: 'CL',
-    tone: 'classes',
-    route: '/admin/dashboard/classes',
   },
   {
     key: 'totalIncome',
@@ -59,6 +53,13 @@ const statCards = [
     tone: 'active',
     route: '/admin/dashboard/active-users',
   },
+  {
+    key: 'attendanceRecords',
+    title: 'All Class Attendance',
+    icon: 'AT',
+    tone: 'classes',
+    route: '/admin/dashboard/attendance-records',
+  },
 ];
 
 const AdminDashboard = () => {
@@ -71,7 +72,7 @@ const AdminDashboard = () => {
     const fetchSummary = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('/admin/dashboard');
+        const res = await axios.get('/api/admin/dashboard.php');
         setStats({ ...initialStats, ...res.data.data });
         setError('');
       } catch (err) {
@@ -136,3 +137,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+

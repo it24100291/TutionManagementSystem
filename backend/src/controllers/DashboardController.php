@@ -14,6 +14,8 @@ class DashboardController {
             'totalIncome' => $this->sumPayments(),
             'pendingPayments' => $this->countPendingPayments(),
             'activeUsers' => $this->countActiveUsers(),
+            'salaryDetails' => $this->sumSalaryPayments(),
+            'attendanceRecords' => $this->countAttendanceRecords(),
         ]);
     }
 
@@ -25,6 +27,8 @@ class DashboardController {
             'paid-payments',
             'pending-payments',
             'active-users',
+            'salary-details',
+            'attendance-records',
         ];
 
         if (!in_array($metric, $allowedMetrics, true)) {
@@ -53,6 +57,7 @@ class DashboardController {
             'classes' => $this->updateClass($id, $data),
             'paid-payments', 'pending-payments' => $this->updatePayment($id, $data),
             'active-users' => $this->updateActiveUser($id, $data),
+            'salary-details' => $this->updateSalaryDetail($id, $data),
             default => Response::error('Update is not available for this list', 400),
         };
     }
@@ -82,6 +87,16 @@ class DashboardController {
         }
 
         return (int) $this->db->query("SELECT COUNT(*) FROM {$tableName}")->fetchColumn();
+    }
+
+    private function columnExists($tableName, $columnName) {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) AS column_count
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+        ");
+        $stmt->execute([$tableName, $columnName]);
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     private function sumPayments() {
@@ -114,7 +129,34 @@ class DashboardController {
         return (int) $stmt->fetchColumn();
     }
 
+    private function sumSalaryPayments() {
+        if (!$this->tableExists('salary_payments')) {
+            return 0;
+        }
+
+        $statusFilter = $this->columnExists('salary_payments', 'status')
+            ? " WHERE LOWER(status) = 'paid'"
+            : '';
+
+        $stmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) FROM salary_payments{$statusFilter}");
+        $stmt->execute();
+        return (float) $stmt->fetchColumn();
+    }
+
+    private function countAttendanceRecords() {
+        if (!$this->tableExists('attendance')) {
+            return 0;
+        }
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM attendance");
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+    }
+
     private function fetchMetricRows($metric) {
+        $selectedMonth = isset($_GET['month']) ? max(1, min(12, (int) $_GET['month'])) : (int) date('m');
+        $selectedYear = isset($_GET['year']) ? max(2000, min(2100, (int) $_GET['year'])) : (int) date('Y');
+
         return match ($metric) {
             'students' => $this->fetchStudents(),
             'tutors' => $this->fetchTutors(),
@@ -122,6 +164,8 @@ class DashboardController {
             'paid-payments' => $this->fetchPaymentsByStatus('Paid'),
             'pending-payments' => $this->fetchPaymentsByStatus('Unpaid'),
             'active-users' => $this->fetchActiveUsers(),
+            'salary-details' => $this->fetchSalaryDetails($selectedMonth, $selectedYear),
+            'attendance-records' => $this->fetchAttendanceRecords(),
             default => [],
         };
     }
@@ -211,6 +255,232 @@ class DashboardController {
             WHERE u.status = 'ACTIVE'
             ORDER BY u.created_at DESC
         ");
+        return $stmt->fetchAll();
+    }
+
+    private function fetchSalaryDetails(int $selectedMonth, int $selectedYear) {
+        if (!$this->tableExists('tutors') || !$this->tableExists('users')) {
+            return [];
+        }
+
+        $hasSubject = $this->columnExists('tutors', 'subject');
+        $hasTutorUserId = $this->columnExists('tutors', 'user_id');
+        $stmt = $this->db->query("
+            SELECT
+                t.id AS tutor_profile_id,
+                " . ($hasTutorUserId ? 't.user_id' : 't.id') . " AS tutor_user_id,
+                " . ($hasTutorUserId ? 'u.full_name' : "CONCAT('Tutor #', t.id)") . " AS full_name,
+                " . ($hasSubject ? 't.subject' : "''") . " AS subject,
+                " . ($hasTutorUserId ? 'u.created_at' : 'NULL') . " AS created_at
+            FROM tutors t
+            " . ($hasTutorUserId ? 'INNER JOIN users u ON u.id = t.user_id' : '') . "
+            ORDER BY full_name ASC
+        ");
+
+        $tutors = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $monthValue = sprintf('%04d-%02d', $selectedYear, $selectedMonth);
+
+        return array_map(function ($tutor) use ($monthValue) {
+            $hoursThisMonth = $this->calculateTutorMonthlyHours(
+                (int) ($tutor['tutor_profile_id'] ?? 0),
+                (int) ($tutor['tutor_user_id'] ?? 0)
+            );
+            $ratePerHour = $this->resolveTutorRateFromSubject((string) ($tutor['subject'] ?? ''));
+            $baseAmount = $hoursThisMonth * $ratePerHour;
+            $payment = $this->fetchTutorMonthlyPayment((int) ($tutor['tutor_profile_id'] ?? 0), $monthValue);
+
+            return [
+                'id' => (int) ($tutor['tutor_profile_id'] ?? 0),
+                'full_name' => $tutor['full_name'] ?? 'Tutor',
+                'subject' => $tutor['subject'] ?? '',
+                'payment_month' => $monthValue,
+                'hours_this_month' => $hoursThisMonth,
+                'rate_per_hour' => $ratePerHour,
+                'amount' => $payment['amount'] ?? $baseAmount,
+                'status' => $payment['status'] ?? 'Pending',
+                'created_at' => $payment['created_at'] ?? ($tutor['created_at'] ?? null),
+            ];
+        }, $tutors);
+    }
+
+    private function ensureSalaryPaymentsTable(): void
+    {
+        $this->db->exec("
+            CREATE TABLE IF NOT EXISTS salary_payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                tutor_id INT NOT NULL,
+                payment_month DATE NOT NULL,
+                amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        ");
+    }
+
+    private function calculateTutorMonthlyHours(int $tutorProfileId, int $tutorUserId): int
+    {
+        if (
+            !$this->tableExists('timetable') ||
+            !$this->columnExists('timetable', 'tutor_id') ||
+            !$this->columnExists('timetable', 'time_slot')
+        ) {
+            return 0;
+        }
+
+        $ids = array_values(array_unique(array_filter([$tutorProfileId, $tutorUserId])));
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT day, time_slot
+            FROM timetable
+            WHERE tutor_id IN ({$placeholders})
+        ");
+        $stmt->execute($ids);
+        $slots = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $weeklyHours = 0.0;
+        foreach ($slots as $slot) {
+            $weeklyHours += $this->parseTimeSlotHours((string) ($slot['time_slot'] ?? ''));
+        }
+
+        return (int) round($weeklyHours * 4);
+    }
+
+    private function fetchTutorMonthlyPayment(int $tutorProfileId, string $monthValue): ?array
+    {
+        if (
+            !$this->tableExists('salary_payments') ||
+            !$this->columnExists('salary_payments', 'tutor_id') ||
+            !$this->columnExists('salary_payments', 'payment_month')
+        ) {
+            return null;
+        }
+
+        $selectAmount = $this->columnExists('salary_payments', 'amount') ? 'amount' : '0 AS amount';
+        $selectStatus = $this->columnExists('salary_payments', 'status') ? 'status' : "'Pending' AS status";
+        $selectCreatedAt = $this->columnExists('salary_payments', 'created_at') ? 'created_at' : 'NULL AS created_at';
+
+        $stmt = $this->db->prepare("
+            SELECT
+                {$selectAmount},
+                {$selectStatus},
+                {$selectCreatedAt}
+            FROM salary_payments
+            WHERE tutor_id = ?
+              AND DATE_FORMAT(payment_month, '%Y-%m') = ?
+            ORDER BY payment_month DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$tutorProfileId, $monthValue]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return null;
+        }
+
+        return [
+            'amount' => (float) ($row['amount'] ?? 0),
+            'status' => trim((string) ($row['status'] ?? '')) ?: 'Pending',
+            'created_at' => $row['created_at'] ?? null,
+        ];
+    }
+
+    private function resolveTutorRateFromSubject(string $subject): int
+    {
+        $normalized = strtolower(trim($subject));
+        if (in_array($normalized, ['science', 'mathematics', 'maths', 'ict'], true)) {
+            return 800;
+        }
+
+        return 700;
+    }
+
+    private function parseTimeSlotHours(string $timeSlot): float
+    {
+        $parts = array_map('trim', explode('-', $timeSlot));
+        if (count($parts) !== 2) {
+            return 0.0;
+        }
+
+        $start = DateTime::createFromFormat('H:i', $parts[0]);
+        $end = DateTime::createFromFormat('H:i', $parts[1]);
+        if (!$start || !$end) {
+            return 0.0;
+        }
+
+        $startMinutes = ((int) $start->format('H') * 60) + (int) $start->format('i');
+        $endMinutes = ((int) $end->format('H') * 60) + (int) $end->format('i');
+        $durationMinutes = $endMinutes - $startMinutes;
+
+        return $durationMinutes > 0 ? $durationMinutes / 60 : 0.0;
+    }
+
+    private function fetchAttendanceRecords() {
+        if (!$this->tableExists('attendance')) {
+            return [];
+        }
+
+        $hasTimetable = $this->tableExists('timetable');
+        $hasClasses = $this->tableExists('classes');
+        $hasStudents = $this->tableExists('students');
+        $hasStudentUsers = $this->tableExists('users');
+        $hasTutors = $this->tableExists('tutors');
+        $hasTutorUsers = $this->tableExists('users');
+
+        $joins = '';
+        if ($hasTimetable && $this->columnExists('attendance', 'timetable_id')) {
+            $joins .= ' LEFT JOIN timetable tt ON tt.id = a.timetable_id';
+        }
+        if ($hasClasses && $hasTimetable && $this->columnExists('timetable', 'class_id')) {
+            $joins .= ' LEFT JOIN classes c ON c.id = tt.class_id';
+        }
+        if ($hasStudents && $this->columnExists('attendance', 'student_id')) {
+            $joins .= ' LEFT JOIN students s ON s.id = a.student_id';
+        }
+        if ($hasStudentUsers && $hasStudents && $this->columnExists('students', 'user_id')) {
+            $joins .= ' LEFT JOIN users su ON su.id = s.user_id';
+        }
+        if ($hasTutors && $this->columnExists('attendance', 'tutor_id')) {
+            $joins .= ' LEFT JOIN tutors t ON t.id = a.tutor_id';
+        }
+        if ($hasTutorUsers && $this->columnExists('attendance', 'tutor_id')) {
+            $joins .= ' LEFT JOIN users tu_direct ON tu_direct.id = a.tutor_id';
+        }
+        if ($hasTutorUsers && $hasTutors && $this->columnExists('tutors', 'user_id')) {
+            $joins .= ' LEFT JOIN users tu_profile ON tu_profile.id = t.user_id';
+        }
+
+        $studentName = $hasStudentUsers && $hasStudents ? 'su.full_name' : "CONCAT('Student #', a.student_id)";
+        $tutorName = $hasTutorUsers
+            ? "COALESCE(tu_direct.full_name, tu_profile.full_name, CONCAT('Tutor #', a.tutor_id))"
+            : "CONCAT('Tutor #', a.tutor_id)";
+        $className = $hasClasses
+            ? "COALESCE(NULLIF(c.title, ''), c.name, 'N/A')"
+            : ($hasStudents && $this->columnExists('students', 'school_name') ? "COALESCE(NULLIF(s.school_name, ''), 'N/A')" : "'N/A'");
+        $gradeValue = $hasClasses && $this->columnExists('classes', 'grade')
+            ? 'c.grade'
+            : ($hasStudents && $this->columnExists('students', 'grade') ? 's.grade' : "''");
+        $markedAt = $this->columnExists('attendance', 'marked_at') ? 'a.marked_at' : 'NULL';
+        $status = $this->columnExists('attendance', 'status') ? 'a.status' : "'N/A'";
+
+        $stmt = $this->db->query("
+            SELECT
+                a.id,
+                {$studentName} AS student_name,
+                {$className} AS class_name,
+                {$gradeValue} AS grade,
+                {$tutorName} AS tutor_name,
+                {$status} AS status,
+                {$markedAt} AS marked_at
+            FROM attendance a
+            {$joins}
+            ORDER BY a.id DESC
+        ");
+
         return $stmt->fetchAll();
     }
 
@@ -357,6 +627,58 @@ class DashboardController {
         Response::success(['message' => 'Payment updated']);
     }
 
+    private function updateSalaryDetail($id, array $data)
+    {
+        if (!$this->tableExists('tutors')) {
+            Response::error('Tutors table not found', 404);
+        }
+
+        $this->ensureSalaryPaymentsTable();
+
+        $month = max(1, min(12, (int) ($data['month'] ?? date('m'))));
+        $year = max(2000, min(2100, (int) ($data['year'] ?? date('Y'))));
+        $amount = (float) ($data['amount'] ?? 0);
+        $status = trim((string) ($data['status'] ?? 'Paid'));
+        $paymentMonth = sprintf('%04d-%02d-01', $year, $month);
+
+        if (!in_array(strtolower($status), ['paid', 'pending'], true)) {
+            Response::error('Invalid salary status');
+        }
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM tutors WHERE id = ?");
+        $stmt->execute([$id]);
+        if (!(int) $stmt->fetchColumn()) {
+            Response::error('Tutor not found', 404);
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT id
+            FROM salary_payments
+            WHERE tutor_id = ?
+              AND DATE_FORMAT(payment_month, '%Y-%m') = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$id, sprintf('%04d-%02d', $year, $month)]);
+        $paymentId = $stmt->fetchColumn();
+
+        if ($paymentId) {
+            $stmt = $this->db->prepare("
+                UPDATE salary_payments
+                SET amount = ?, status = ?, payment_month = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$amount, ucfirst(strtolower($status)), $paymentMonth, $paymentId]);
+        } else {
+            $stmt = $this->db->prepare("
+                INSERT INTO salary_payments (tutor_id, payment_month, amount, status)
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$id, $paymentMonth, $amount, ucfirst(strtolower($status))]);
+        }
+
+        Response::success(['message' => 'Salary status updated']);
+    }
+
     private function updateActiveUser($id, array $data) {
         $this->ensureUserExists($id);
 
@@ -418,3 +740,4 @@ class DashboardController {
         }
     }
 }
+

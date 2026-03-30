@@ -1,83 +1,164 @@
 [
     {
         "grade": "Grade 6",
-        "teacher_id": "mr_perera",
-        "teacher": "Mr. Perera",
-        "subject": "Mathematics",
+        "teacher_id": "151",
+        "teacher": "A. Thevaki",
+        "subject": "Tamil",
         "day": "Monday",
         "time": "15:00 - 16:00",
         "room": "Hall 1"
     },
     {
         "grade": "Grade 6",
-        "teacher_id": "ms_silva",
-        "teacher": "Ms. Silva",
+        "teacher_id": "141",
+        "teacher": "N. Niroshan",
         "subject": "Science",
         "day": "Monday",
         "time": "16:00 - 17:00",
-        "room": "Hall 4"
+        "room": "Hall 1"
     },
     {
         "grade": "Grade 6",
-        "teacher_id": "mr_fernando",
-        "teacher": "Mr. Fernando",
-        "subject": "English",
+        "teacher_id": "144",
+        "teacher": "J. Diluxshan",
+        "subject": "Civics",
+        "day": "Monday",
+        "time": "17:00 - 18:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "155",
+        "teacher": "K.Pavithiran",
+        "subject": "Mathematics",
+        "day": "Tuesday",
+        "time": "15:00 - 16:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "149",
+        "teacher": "R. Sathya",
+        "subject": "Sinhala",
+        "day": "Tuesday",
+        "time": "16:00 - 17:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "141",
+        "teacher": "N. Niroshan",
+        "subject": "Science",
         "day": "Tuesday",
         "time": "17:00 - 18:00",
-        "room": "Hall 2"
+        "room": "Hall 1"
     },
     {
-        "grade": "Grade 7",
-        "teacher_id": "mrs_jayasinghe",
-        "teacher": "Mrs. Jayasinghe",
-        "subject": "History",
+        "grade": "Grade 6",
+        "teacher_id": "14",
+        "teacher": "S.Sreerangan",
+        "subject": "Mathematics",
         "day": "Wednesday",
         "time": "15:00 - 16:00",
-        "room": "Hall 3"
+        "room": "Hall 1"
     },
     {
-        "grade": "Grade 8",
-        "teacher_id": "mr_kumar",
-        "teacher": "Mr. Kumar",
-        "subject": "ICT",
+        "grade": "Grade 6",
+        "teacher_id": "145",
+        "teacher": "P. Subhashini",
+        "subject": "History",
+        "day": "Wednesday",
+        "time": "16:00 - 17:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "13",
+        "teacher": "Chahana.L",
+        "subject": "English",
+        "day": "Wednesday",
+        "time": "17:00 - 18:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "13",
+        "teacher": "Chahana.L",
+        "subject": "English",
+        "day": "Thursday",
+        "time": "15:00 - 16:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "151",
+        "teacher": "A. Thevaki",
+        "subject": "Tamil",
         "day": "Thursday",
         "time": "16:00 - 17:00",
-        "room": "Hall 6"
+        "room": "Hall 1"
     },
     {
-        "grade": "Grade 8",
-        "teacher_id": "mr_fernando",
-        "teacher": "Mr. Fernando",
+        "grade": "Grade 6",
+        "teacher_id": "143",
+        "teacher": "K. Sanjana",
         "subject": "English",
+        "day": "Thursday",
+        "time": "17:00 - 18:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "145",
+        "teacher": "P. Subhashini",
+        "subject": "History",
         "day": "Saturday",
         "time": "08:00 - 09:00",
         "room": "Hall 1"
     },
     {
-        "grade": "Grade 9",
-        "teacher_id": "ms_silva",
-        "teacher": "Ms. Silva",
-        "subject": "Science",
+        "grade": "Grade 6",
+        "teacher_id": "142",
+        "teacher": "L. Ketheeswaran",
+        "subject": "Religion",
         "day": "Saturday",
-        "time": "14:00 - 15:00",
-        "room": "Hall 5"
+        "time": "09:00 - 10:00",
+        "room": "Hall 1"
     },
     {
-        "grade": "Grade 10",
-        "teacher_id": "mr_perera",
-        "teacher": "Mr. Perera",
-        "subject": "Mathematics",
-        "day": "Sunday",
-        "time": "17:00 - 18:00",
+        "grade": "Grade 6",
+        "teacher_id": "146",
+        "teacher": "T. Krishanthini",
+        "subject": "Geography",
+        "day": "Saturday",
+        "time": "10:00 - 11:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 6",
+        "teacher_id": "147",
+        "teacher": "G. Ketheeswaran",
+        "subject": "ICT",
+        "day": "Saturday",
+        "time": "14:00 - 15:00",
+        "room": "Hall 1"
+    },
+    {
+        "grade": "Grade 7",
+        "teacher_id": "13",
+        "teacher": "Chahana.L",
+        "subject": "English",
+        "day": "Tuesday",
+        "time": "15:00 - 16:00",
         "room": "Hall 2"
     },
     {
-        "grade": "Grade 11",
-        "teacher_id": "ms_silva",
-        "teacher": "Ms. Silva",
-        "subject": "Science",
-        "day": "Tuesday",
-        "time": "16:00 - 17:00",
-        "room": "Hall 6"
+        "grade": "Grade 7",
+        "teacher_id": "151",
+        "teacher": "A. Thevaki",
+        "subject": "Tamil",
+        "day": "Monday",
+        "time": "15:00 - 16:00",
+        "room": "Hall 2"
     }
 ]

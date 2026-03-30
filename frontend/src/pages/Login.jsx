@@ -3,16 +3,18 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(location.state?.registrationSuccess || '');
   const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     try {
       const loggedInUser = await login(email, password);
       if (loggedInUser?.role === 'ADMIN') {
@@ -43,6 +45,7 @@ const Login = () => {
         <div className={`form-box register-card register-card-simple login-card${isSlidingFromRegister ? ' auth-slide-from-register' : ''}`}>
           <div className="register-form-panel register-form-panel-simple login-form-panel">
             <h3 className="register-form-title">Login</h3>
+            {success && <div className="success">{success}</div>}
             {error && <div className="error">{error}</div>}
             <form className="register-form-grid login-form-grid" onSubmit={handleSubmit}>
               <div className="form-group register-form-span">

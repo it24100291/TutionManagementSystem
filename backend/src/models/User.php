@@ -40,12 +40,13 @@ class User {
     }
 
     public function createStudentProfile($userId, array $data) {
-        $stmt = $this->db->prepare("INSERT INTO students (user_id, school_name, grade, siblings_count, guardian_name, guardian_job, guardian_nic) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $this->db->prepare("INSERT INTO students (user_id, school_name, grade, siblings_count, parent_email, guardian_name, guardian_job, guardian_nic) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $userId,
             $data['school_name'],
             $data['grade'],
             $data['siblings_count'],
+            $data['parent_email'],
             $data['guardian_name'],
             $data['guardian_job'],
             $data['guardian_nic']
@@ -79,6 +80,7 @@ class User {
                 s.school_name,
                 s.grade,
                 s.siblings_count,
+                s.parent_email,
                 s.guardian_name,
                 s.guardian_job,
                 s.guardian_nic
@@ -121,7 +123,7 @@ class User {
         }
 
         if ($profile['role_name'] === 'STUDENT') {
-            $stmt = $this->db->prepare("SELECT school_name, grade, siblings_count, guardian_name, guardian_job, guardian_nic FROM students WHERE user_id = ?");
+            $stmt = $this->db->prepare("SELECT school_name, grade, siblings_count, parent_email, guardian_name, guardian_job, guardian_nic FROM students WHERE user_id = ?");
             $stmt->execute([$id]);
             $details = $stmt->fetch();
             if ($details) {
@@ -194,13 +196,14 @@ class User {
         if ($exists) {
             $stmt = $this->db->prepare("
                 UPDATE students
-                SET school_name = ?, grade = ?, siblings_count = ?, guardian_name = ?, guardian_job = ?, guardian_nic = ?
+                SET school_name = ?, grade = ?, siblings_count = ?, parent_email = ?, guardian_name = ?, guardian_job = ?, guardian_nic = ?
                 WHERE user_id = ?
             ");
             $stmt->execute([
                 $data['school_name'],
                 $data['grade'],
                 $data['siblings_count'],
+                $data['parent_email'],
                 $data['guardian_name'],
                 $data['guardian_job'],
                 $data['guardian_nic'],
@@ -210,14 +213,15 @@ class User {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO students (user_id, school_name, grade, siblings_count, guardian_name, guardian_job, guardian_nic)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO students (user_id, school_name, grade, siblings_count, parent_email, guardian_name, guardian_job, guardian_nic)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $userId,
             $data['school_name'],
             $data['grade'],
             $data['siblings_count'],
+            $data['parent_email'],
             $data['guardian_name'],
             $data['guardian_job'],
             $data['guardian_nic']
@@ -274,6 +278,7 @@ class User {
                 school_name VARCHAR(255) NOT NULL,
                 grade VARCHAR(50) NOT NULL,
                 siblings_count INT UNSIGNED NOT NULL DEFAULT 0,
+                parent_email VARCHAR(255) NULL,
                 guardian_name VARCHAR(255) NOT NULL,
                 guardian_job VARCHAR(255) NOT NULL,
                 guardian_nic VARCHAR(50) NOT NULL,
@@ -284,5 +289,10 @@ class User {
                     ON DELETE CASCADE
             )
         ");
+
+        $parentEmailColumn = $this->db->query("SHOW COLUMNS FROM students LIKE 'parent_email'");
+        if (!$parentEmailColumn->fetch()) {
+            $this->db->exec("ALTER TABLE students ADD COLUMN parent_email VARCHAR(255) NULL AFTER siblings_count");
+        }
     }
 }

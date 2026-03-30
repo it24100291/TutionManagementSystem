@@ -41,8 +41,6 @@ try {
     $tutorId = (int) $inputTutorId;
     $timetableId = (int) $inputTimetableId;
 
-    $db->beginTransaction();
-
     $db->exec("
         CREATE TABLE IF NOT EXISTS attendance (
             id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -54,13 +52,17 @@ try {
         )
     ");
 
+    $db->beginTransaction();
+
     $existingStmt = $db->prepare("
         SELECT COUNT(*) FROM attendance
         WHERE timetable_id = ? AND tutor_id = ? AND DATE(marked_at) = CURDATE()
     ");
     $existingStmt->execute([$timetableId, $tutorId]);
     if ((int) $existingStmt->fetchColumn() > 0) {
-        $db->rollBack();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         http_response_code(400);
         echo json_encode(['error' => 'Attendance already submitted for this class today']);
         exit;
@@ -77,7 +79,9 @@ try {
         $status = isset($record['status']) ? trim((string) $record['status']) : '';
 
         if ($studentId === '' || !ctype_digit($studentId) || !in_array($status, ['present', 'absent'], true)) {
-            $db->rollBack();
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
             http_response_code(400);
             echo json_encode(['error' => 'Invalid attendance record payload']);
             exit;

@@ -61,6 +61,31 @@ function pdfEscape(string $value): string {
     return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $value);
 }
 
+function resolveSlipTutorRatePerHour(PDO $db, int $tutorId): int {
+    if (!slipTableExists($db, 'tutors') || !slipColumnExists($db, 'tutors', 'subject')) {
+        return 700;
+    }
+
+    $hasUserId = slipColumnExists($db, 'tutors', 'user_id');
+    $whereClause = $hasUserId ? 'WHERE user_id = ? OR id = ?' : 'WHERE id = ?';
+    $params = $hasUserId ? [$tutorId, $tutorId] : [$tutorId];
+
+    $stmt = $db->prepare("
+        SELECT subject
+        FROM tutors
+        {$whereClause}
+        LIMIT 1
+    ");
+    $stmt->execute($params);
+    $subject = strtolower(trim((string) ($stmt->fetchColumn() ?: '')));
+
+    if (in_array($subject, ['science', 'mathematics', 'maths', 'ict'], true)) {
+        return 800;
+    }
+
+    return 700;
+}
+
 function buildSimplePdf(array $lines): string {
     $content = "BT\n/F1 18 Tf\n50 790 Td\n";
     $first = true;
@@ -127,19 +152,7 @@ try {
         $hoursThisMonth = (int) round((float) $stmt->fetchColumn());
     }
 
-    $ratePerHour = 0;
-    if (
-        slipTableExists($db, 'tutors') &&
-        slipColumnExists($db, 'tutors', 'id') &&
-        slipColumnExists($db, 'tutors', 'rate_per_hour')
-    ) {
-        $stmt = $db->prepare("SELECT COALESCE(rate_per_hour, 0) FROM tutors WHERE id = ? LIMIT 1");
-        $stmt->execute([$tutorId]);
-        $rate = $stmt->fetchColumn();
-        if ($rate !== false) {
-            $ratePerHour = (int) round((float) $rate);
-        }
-    }
+    $ratePerHour = resolveSlipTutorRatePerHour($db, $tutorId);
 
     $status = 'pending';
     $amount = $hoursThisMonth * $ratePerHour;

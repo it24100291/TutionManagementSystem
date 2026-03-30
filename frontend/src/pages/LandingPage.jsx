@@ -276,8 +276,8 @@ a { text-decoration: none; }
    DATA
 ───────────────────────────────────────────── */
 const INSTITUTE = 'NEW KRISHNA EDUCATION CENTER-KODIKAMAM';
-const EMAIL     = 'info@newkrishnaedu.com';
-const PHONE     = '+94 77 123 4567';
+const EMAIL     = 'krishnaeducationcenter90@gmail.com';
+const PHONE     = '+94770875482';
 const ADDRESS   = 'Kodikamam, Jaffna, Sri Lanka';
 
 const NAV = [
@@ -311,9 +311,9 @@ const BENEFITS = [
 ];
 
 const TESTIMONIALS = [
-  { quote: 'The system gives us one clean place to manage registration, class flow, and payments without confusion.',          name: 'Kumara Silva',    role: 'Institute Admin' },
-  { quote: 'I can check schedules, attendance, and student updates much faster than before. Daily work is more structured.',  name: 'Roshan Fernando', role: 'Tutor'           },
-  { quote: 'The interface is simple and clear. It feels like a real institute platform instead of scattered manual records.', name: 'Nilmini Perera',  role: 'Parent'          },
+  { quote: 'The system gives us one clean place to manage registration, class flow, and payments without confusion.',          name: 'S. Tharshan',     role: 'Institute Admin' },
+  { quote: 'I can check schedules, attendance, and student updates much faster than before. Daily work is more structured.',  name: 'K. Nivetha',     role: 'Tutor'           },
+  { quote: 'The interface is simple and clear. It feels like a real institute platform instead of scattered manual records.', name: 'P. Harini',      role: 'Parent'          },
 ];
 
 const FAQS = [

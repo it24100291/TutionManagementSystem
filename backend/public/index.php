@@ -4,6 +4,7 @@ require_once __DIR__ . '/../src/config/env.php';
 require_once __DIR__ . '/../src/config/db.php';
 require_once __DIR__ . '/../src/utils/response.php';
 require_once __DIR__ . '/../src/utils/jwt.php';
+require_once __DIR__ . '/../src/utils/Mailer.php';
 require_once __DIR__ . '/../src/middleware/auth.php';
 require_once __DIR__ . '/../src/middleware/rbac.php';
 require_once __DIR__ . '/../src/controllers/AuthController.php';
@@ -12,8 +13,11 @@ require_once __DIR__ . '/../src/controllers/AdminController.php';
 require_once __DIR__ . '/../src/controllers/SuggestionController.php';
 require_once __DIR__ . '/../src/controllers/TimetableController.php';
 require_once __DIR__ . '/../src/controllers/DashboardController.php';
+require_once __DIR__ . '/../src/controllers/TutorLeaveRequestController.php';
+require_once __DIR__ . '/../src/controllers/ExaminationController.php';
 require_once __DIR__ . '/../src/models/User.php';
 require_once __DIR__ . '/../src/models/Suggestion.php';
+require_once __DIR__ . '/../src/models/EmailVerification.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -38,6 +42,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+if (PHP_SAPI === 'cli-server') {
+    $publicFilePath = realpath(__DIR__ . $path);
+    $publicRootPath = realpath(__DIR__);
+
+    if (
+        $publicFilePath !== false &&
+        $publicRootPath !== false &&
+        str_starts_with($publicFilePath, $publicRootPath) &&
+        is_file($publicFilePath)
+    ) {
+        return false;
+    }
+}
 
 if ($path === '/api/overview.php' || $path === '/overview.php') {
     require __DIR__ . '/api/overview.php';
@@ -204,6 +222,14 @@ try {
         $controller = new AuthController();
         $controller->register();
     }
+    elseif ($method === 'POST' && ($matchesPattern('#^/(api/)?auth/send-otp/?$#', $matches) || $containsRouteFragment('auth/send-otp'))) {
+        $controller = new AuthController();
+        $controller->sendOtp();
+    }
+    elseif ($method === 'POST' && ($matchesPattern('#^/(api/)?auth/verify-otp/?$#', $matches) || $containsRouteFragment('auth/verify-otp'))) {
+        $controller = new AuthController();
+        $controller->verifyOtp();
+    }
     elseif ($method === 'POST' && ($matchesPattern('#^/(api/)?auth/login/?$#', $matches) || $containsRouteFragment('auth/login'))) {
         $controller = new AuthController();
         $controller->login();
@@ -258,6 +284,24 @@ try {
         $controller = new TimetableController();
         $controller->saveCell();
     }
+    elseif ($method === 'GET' && ($matchesRoute('/api/admin/examinations') || $matchesRoute('/admin/examinations'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new ExaminationController();
+        $controller->getAdminExams();
+    }
+    elseif ($method === 'POST' && ($matchesRoute('/api/admin/examinations') || $matchesRoute('/admin/examinations'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new ExaminationController();
+        $controller->createExam();
+    }
+    elseif ($method === 'GET' && ($matchesRoute('/api/admin/examinations/results') || $matchesRoute('/admin/examinations/results'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new ExaminationController();
+        $controller->getAdminResults();
+    }
     elseif ($method === 'GET' && ($matchesRoute('/api/admin/dashboard') || $matchesRoute('/admin/dashboard'))) {
         authMiddleware();
         rbacMiddleware(['ADMIN']);
@@ -306,11 +350,80 @@ try {
         $controller = new SuggestionController();
         $controller->getAll();
     }
+    elseif ($method === 'GET' && ($matchesRoute('/api/admin/tutor-leave-requests') || $matchesRoute('/admin/tutor-leave-requests'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new TutorLeaveRequestController();
+        $controller->getAllForAdmin();
+    }
+    elseif ($method === 'PUT' && $matchesPattern('#^/(api/)?admin/tutor-leave-requests/(\d+)$#', $matches)) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new TutorLeaveRequestController();
+        $controller->updateByAdmin((int) $matches[2]);
+    }
     elseif ($method === 'PUT' && $matchesPattern('#^/(api/)?admin/suggestions/(\d+)$#', $matches)) {
         authMiddleware();
         rbacMiddleware(['ADMIN']);
         $controller = new SuggestionController();
         $controller->update($matches[2]);
+    }
+
+    elseif ($method === 'GET' && ($matchesRoute('/api/admin/examinations') || $matchesRoute('/admin/examinations'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new ExaminationController();
+        $controller->getAdminExams();
+    }
+    elseif ($method === 'POST' && ($matchesRoute('/api/admin/examinations') || $matchesRoute('/admin/examinations'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new ExaminationController();
+        $controller->createExam();
+    }
+    elseif ($method === 'GET' && ($matchesRoute('/api/admin/examinations/results') || $matchesRoute('/admin/examinations/results'))) {
+        authMiddleware();
+        rbacMiddleware(['ADMIN']);
+        $controller = new ExaminationController();
+        $controller->getAdminResults();
+    }
+
+    // Tutor Leave Request Routes
+    elseif ($method === 'GET' && ($matchesRoute('/api/tutor/my-leave-requests') || $matchesRoute('/tutor/my-leave-requests'))) {
+        authMiddleware();
+        rbacMiddleware(['TUTOR']);
+        $controller = new TutorLeaveRequestController();
+        $controller->getMine();
+    }
+    elseif ($method === 'POST' && ($matchesRoute('/api/tutor/my-leave-requests') || $matchesRoute('/tutor/my-leave-requests'))) {
+        authMiddleware();
+        rbacMiddleware(['TUTOR']);
+        $controller = new TutorLeaveRequestController();
+        $controller->submit();
+    }
+    elseif ($method === 'GET' && ($matchesRoute('/api/tutor/examinations/options') || $matchesRoute('/tutor/examinations/options'))) {
+        authMiddleware();
+        rbacMiddleware(['TUTOR']);
+        $controller = new ExaminationController();
+        $controller->getTutorOptions();
+    }
+    elseif ($method === 'GET' && ($matchesRoute('/api/tutor/examinations/students') || $matchesRoute('/tutor/examinations/students'))) {
+        authMiddleware();
+        rbacMiddleware(['TUTOR']);
+        $controller = new ExaminationController();
+        $controller->getTutorStudents();
+    }
+    elseif ($method === 'GET' && ($matchesRoute('/api/tutor/examinations/grade-students') || $matchesRoute('/tutor/examinations/grade-students'))) {
+        authMiddleware();
+        rbacMiddleware(['TUTOR']);
+        $controller = new ExaminationController();
+        $controller->getTutorGradeStudents();
+    }
+    elseif ($method === 'POST' && ($matchesRoute('/api/tutor/examinations/marks') || $matchesRoute('/tutor/examinations/marks'))) {
+        authMiddleware();
+        rbacMiddleware(['TUTOR']);
+        $controller = new ExaminationController();
+        $controller->saveTutorMarks();
     }
     
     else {
@@ -319,3 +432,4 @@ try {
 } catch (Throwable $e) {
     Response::error($e->getMessage(), 500);
 }
+
