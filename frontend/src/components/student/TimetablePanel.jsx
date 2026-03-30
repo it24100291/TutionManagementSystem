@@ -6,6 +6,12 @@ const styles = {
     display: 'grid',
     gap: '20px',
   },
+  summaryRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '16px',
+    alignItems: 'stretch',
+  },
   summaryCard: {
     padding: '20px',
     borderRadius: '12px',
@@ -28,6 +34,26 @@ const styles = {
     color: '#0f172a',
     fontSize: '1.7rem',
     fontWeight: 800,
+  },
+  refreshCard: {
+    padding: '20px',
+    borderRadius: '12px',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%)',
+    border: '1px solid #dbe7f2',
+    boxShadow: '0 12px 24px rgba(15, 23, 42, 0.05)',
+    minWidth: '220px',
+  },
+  refreshStatus: {
+    margin: 0,
+    color: '#0f172a',
+    fontSize: '1rem',
+    fontWeight: 700,
+  },
+  refreshMeta: {
+    marginTop: '8px',
+    color: '#64748b',
+    fontSize: '0.92rem',
+    fontWeight: 600,
   },
   tableWrap: {
     borderRadius: '12px',
@@ -154,7 +180,9 @@ const styles = {
 const StudentTimetablePanel = ({ studentId }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     if (!studentId) {
@@ -163,20 +191,52 @@ const StudentTimetablePanel = ({ studentId }) => {
       return;
     }
 
-    const fetchTimetable = async () => {
+    let isMounted = true;
+
+    const fetchTimetable = async ({ silent = false } = {}) => {
       try {
-        setLoading(true);
+        if (silent) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
         const res = await axios.get(`/api/student_timetable.php?student_id=${studentId}`);
+        if (!isMounted) {
+          return;
+        }
+
         setData(res.data || null);
         setError('');
+        setLastUpdated(new Date());
       } catch (err) {
+        if (!isMounted) {
+          return;
+        }
+
         setError(err.response?.data?.error || 'Failed to load timetable');
       } finally {
-        setLoading(false);
+        if (!isMounted) {
+          return;
+        }
+
+        if (silent) {
+          setRefreshing(false);
+        } else {
+          setLoading(false);
+        }
       }
     };
 
     fetchTimetable();
+    const intervalId = window.setInterval(() => {
+      fetchTimetable({ silent: true });
+    }, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
   }, [studentId]);
 
   const gridMap = useMemo(() => {
@@ -216,9 +276,19 @@ const StudentTimetablePanel = ({ studentId }) => {
 
   return (
     <div style={styles.section}>
-      <div style={styles.summaryCard}>
-        <span style={styles.summaryLabel}>Current Grade</span>
-        <p style={styles.summaryValue}>{data.grade || 'N/A'}</p>
+      <div style={styles.summaryRow}>
+        <div style={styles.summaryCard}>
+          <span style={styles.summaryLabel}>Current Grade</span>
+          <p style={styles.summaryValue}>{data.grade || 'N/A'}</p>
+        </div>
+
+        <div style={styles.refreshCard}>
+          <span style={styles.summaryLabel}>Timetable Status</span>
+          <p style={styles.refreshStatus}>{refreshing ? 'Refreshing...' : 'Auto-updating'}</p>
+          <div style={styles.refreshMeta}>
+            {lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}` : 'Waiting for first sync'}
+          </div>
+        </div>
       </div>
 
       <div style={styles.tableWrap}>

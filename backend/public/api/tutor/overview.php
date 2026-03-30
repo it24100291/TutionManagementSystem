@@ -49,9 +49,27 @@ function tutorColumnExists(PDO $db, string $tableName, string $columnName): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function resolveOverviewTutorProfileId(PDO $db, int $tutorId): int {
+    if (
+        tutorTableExists($db, 'tutors') &&
+        tutorColumnExists($db, 'tutors', 'id') &&
+        tutorColumnExists($db, 'tutors', 'user_id')
+    ) {
+        $stmt = $db->prepare("SELECT id FROM tutors WHERE user_id = ? LIMIT 1");
+        $stmt->execute([$tutorId]);
+        $resolvedId = $stmt->fetchColumn();
+        if ($resolvedId !== false) {
+            return (int) $resolvedId;
+        }
+    }
+
+    return $tutorId;
+}
+
 try {
     $db = getDB();
     $tutorId = (int) $inputTutorId;
+    $tutorProfileId = resolveOverviewTutorProfileId($db, $tutorId);
     $targetHours = 60;
 
     if (!tutorTableExists($db, 'timetable')) {
@@ -125,7 +143,7 @@ try {
               AND YEAR(payment_month) = YEAR(CURDATE())
             LIMIT 1
         ");
-        $stmt->execute([$tutorId]);
+        $stmt->execute([$tutorProfileId]);
         $status = $stmt->fetchColumn();
         if ($status !== false) {
             $salaryStatus = strtolower((string) $status) === 'paid' ? 'paid' : 'pending';

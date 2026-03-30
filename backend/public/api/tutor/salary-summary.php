@@ -49,48 +49,99 @@ function salaryColumnExists(PDO $db, string $tableName, string $columnName): boo
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function parseTimetableDurationHours(string $timeSlot): float {
+    $parts = array_map('trim', explode('-', $timeSlot));
+    if (count($parts) !== 2) {
+        return 0.0;
+    }
+
+    $start = DateTime::createFromFormat('H:i', $parts[0]);
+    $end = DateTime::createFromFormat('H:i', $parts[1]);
+
+    if (!$start || !$end) {
+        return 0.0;
+    }
+
+    $startMinutes = ((int) $start->format('H') * 60) + (int) $start->format('i');
+    $endMinutes = ((int) $end->format('H') * 60) + (int) $end->format('i');
+    $durationMinutes = $endMinutes - $startMinutes;
+
+    return $durationMinutes > 0 ? $durationMinutes / 60 : 0.0;
+}
+
+function resolveTutorProfileId(PDO $db, int $tutorId): int {
+    if (
+        salaryTableExists($db, 'tutors') &&
+        salaryColumnExists($db, 'tutors', 'id') &&
+        salaryColumnExists($db, 'tutors', 'user_id')
+    ) {
+        $stmt = $db->prepare("SELECT id FROM tutors WHERE user_id = ? LIMIT 1");
+        $stmt->execute([$tutorId]);
+        $resolvedId = $stmt->fetchColumn();
+        if ($resolvedId !== false) {
+            return (int) $resolvedId;
+        }
+    }
+
+    return $tutorId;
+}
+
+function resolveTutorRatePerHour(PDO $db, int $tutorId): int {
+    if (!salaryTableExists($db, 'tutors') || !salaryColumnExists($db, 'tutors', 'subject')) {
+        return 700;
+    }
+
+    $hasUserId = salaryColumnExists($db, 'tutors', 'user_id');
+    $whereClause = $hasUserId ? 'WHERE user_id = ? OR id = ?' : 'WHERE id = ?';
+    $params = $hasUserId ? [$tutorId, $tutorId] : [$tutorId];
+
+    $stmt = $db->prepare("
+        SELECT subject
+        FROM tutors
+        {$whereClause}
+        LIMIT 1
+    ");
+    $stmt->execute($params);
+    $subject = strtolower(trim((string) ($stmt->fetchColumn() ?: '')));
+
+    if (in_array($subject, ['science', 'mathematics', 'maths', 'ict'], true)) {
+        return 800;
+    }
+
+    return 700;
+}
+
 try {
     $db = getDB();
     $tutorId = (int) $inputTutorId;
+    $tutorProfileId = resolveTutorProfileId($db, $tutorId);
 
     $hoursThisMonth = 0;
     if (
         salaryTableExists($db, 'timetable') &&
         salaryColumnExists($db, 'timetable', 'tutor_id') &&
-        salaryColumnExists($db, 'timetable', 'duration_hours') &&
-        salaryColumnExists($db, 'timetable', 'status') &&
-        salaryColumnExists($db, 'timetable', 'class_date')
+        salaryColumnExists($db, 'timetable', 'time_slot')
     ) {
+        $tutorIds = array_values(array_unique([$tutorId, $tutorProfileId]));
+
+        $placeholders = implode(',', array_fill(0, count($tutorIds), '?'));
         $stmt = $db->prepare("
-            SELECT COALESCE(SUM(duration_hours), 0)
+            SELECT DISTINCT day, time_slot
             FROM timetable
-            WHERE tutor_id = ?
-              AND status = 'active'
-              AND MONTH(class_date) = MONTH(CURDATE())
-              AND YEAR(class_date) = YEAR(CURDATE())
+            WHERE tutor_id IN ({$placeholders})
         ");
-        $stmt->execute([$tutorId]);
-        $hoursThisMonth = (int) round((float) $stmt->fetchColumn());
+        $stmt->execute($tutorIds);
+        $slots = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $weeklyHours = 0.0;
+        foreach ($slots as $slot) {
+            $weeklyHours += parseTimetableDurationHours((string) ($slot['time_slot'] ?? ''));
+        }
+
+        $hoursThisMonth = (int) round($weeklyHours * 4);
     }
 
-    $ratePerHour = 0;
-    if (
-        salaryTableExists($db, 'tutors') &&
-        salaryColumnExists($db, 'tutors', 'id') &&
-        salaryColumnExists($db, 'tutors', 'rate_per_hour')
-    ) {
-        $stmt = $db->prepare("
-            SELECT COALESCE(rate_per_hour, 0)
-            FROM tutors
-            WHERE id = ?
-            LIMIT 1
-        ");
-        $stmt->execute([$tutorId]);
-        $rate = $stmt->fetchColumn();
-        if ($rate !== false) {
-            $ratePerHour = (int) round((float) $rate);
-        }
-    }
+    $ratePerHour = resolveTutorRatePerHour($db, $tutorId);
 
     $history = [];
     $currentStatus = 'pending';
@@ -112,7 +163,7 @@ try {
             ORDER BY payment_month DESC
             LIMIT 3
         ");
-        $stmt->execute([$tutorId]);
+        $stmt->execute([$tutorProfileId]);
         $historyRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($historyRows as $index => $row) {

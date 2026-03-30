@@ -109,6 +109,10 @@ try {
         ? "CONCAT(c.name, ' · ', c.grade)"
         : 'c.name';
 
+    $timetableDateFilter = leaveColumnExists($db, 'timetable', 'class_date')
+        ? ' AND t.class_date = lr.absence_date'
+        : '';
+
     $stmt = $db->prepare("
         SELECT DISTINCT
             lr.id,
@@ -126,7 +130,7 @@ try {
         WHERE EXISTS (
             SELECT 1
             FROM timetable t
-            WHERE t.class_id = c.id AND t.tutor_id = ?
+            WHERE t.class_id = c.id AND t.tutor_id = ? {$timetableDateFilter}
         )
         ORDER BY
             CASE

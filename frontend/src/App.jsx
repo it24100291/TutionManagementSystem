@@ -17,10 +17,9 @@ import SuggestionForm from './pages/SuggestionForm';
 import MySuggestions from './pages/MySuggestions';
 import TutorOverviewPage from './pages/TutorOverviewPage';
 import TutorTodaySchedulePage from './pages/TutorTodaySchedulePage';
-import TutorClassPerformancePage from './pages/TutorClassPerformancePage';
 import TutorAttendancePage from './pages/TutorAttendancePage';
+import TutorClassPerformancePage from './pages/TutorClassPerformancePage';
 import TutorSalarySummaryPage from './pages/TutorSalarySummaryPage';
-import TutorStudentsPage from './pages/TutorStudentsPage';
 import TutorLeaveRequestsPage from './pages/TutorLeaveRequestsPage';
 import AdminPendingUsers from './pages/AdminPendingUsers';
 import AdminSuggestions from './pages/AdminSuggestions';
@@ -28,6 +27,8 @@ import AdminTimetable from './pages/AdminTimetable';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminStudents from './pages/AdminStudents';
 import AdminDashboardDetail from './pages/AdminDashboardDetail';
+import AdminLeaveRequests from './pages/AdminLeaveRequests';
+import AdminExaminations from './pages/AdminExaminations';
 import './App.css';
 
 function ProfileIcon() {
@@ -147,23 +148,25 @@ function DashboardLayout({ children }) {
     { to: '/admin/dashboard', label: 'Dashboard', roles: ['ADMIN'] },
     { to: '/profile', label: 'Profile', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
       { to: '/tutor/overview', label: 'Overview', roles: ['TUTOR'] },
-      { to: '/tutor/students', label: 'Students', roles: ['TUTOR'] },
       { to: '/tutor/leave-requests', label: 'Leave Requests', roles: ['TUTOR'] },
       { to: '/tutor/today-schedule', label: 'Today Schedule', roles: ['TUTOR'] },
-      { to: '/tutor/attendance', label: 'Attendance Marking', roles: ['TUTOR'] },
-    { to: '/tutor/class-performance', label: 'Class Performance', roles: ['TUTOR'] },
+      { to: '/tutor/attendance', label: 'Attendance', roles: ['TUTOR'] },
+            { to: '/tutor/examination', label: 'Exam & Results', roles: ['TUTOR'] },
     { to: '/tutor/salary-summary', label: 'Salary Summary', roles: ['TUTOR'] },
     { to: '/student/overview', label: 'Overview', roles: ['STUDENT'] },
       { to: '/student/attendance', label: 'Attendance', roles: ['STUDENT'] },
-      { to: '/student/payments', label: 'Payments', roles: ['STUDENT'] },
+      { to: '/student/payments', label: 'Fee & Payment', roles: ['STUDENT'] },
       { to: '/student/exams-results', label: 'Exams & Results', roles: ['STUDENT'] },
       { to: '/student/timetable', label: 'Timetable', roles: ['STUDENT'] },
       { to: '/suggestions/new', label: 'New Suggestion', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
       { to: '/suggestions/mine', label: 'My Suggestions', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
-      { to: '/admin/pending-users', label: 'Pending Users', roles: ['ADMIN'] },
+    { to: '/admin/pending-users', label: 'Pending Users', roles: ['ADMIN'] },
     { to: '/admin/suggestions', label: 'All Suggestions', roles: ['ADMIN'] },
+      { to: '/admin/leave-requests', label: 'Leave Requests', roles: ['ADMIN'] },
+      { to: '/admin/dashboard/salary-details', label: 'Salary Details', roles: ['ADMIN'] },
+      { to: '/admin/examinations', label: 'Exams & Results', roles: ['ADMIN'] },
       { to: '/admin/timetable', label: 'Timetable', roles: ['ADMIN'] }
-    ];
+      ];
   const visibleNavItems = navItems.filter((item) => item.roles.includes(roleName));
   const adminNavItems = visibleNavItems.filter((item) => !(isAdminLayout && item.to === '/profile'));
   const tutorNavItems = visibleNavItems.filter((item) => item.roles.includes('TUTOR') && item.to !== '/profile');
@@ -435,9 +438,8 @@ function AppShell() {
       <Route path="/tutor/overview" element={<ProtectedRoute><DashboardLayout><TutorOverviewPage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/today-schedule" element={<ProtectedRoute><DashboardLayout><TutorTodaySchedulePage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/attendance" element={<ProtectedRoute><DashboardLayout><TutorAttendancePage /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/tutor/class-performance" element={<ProtectedRoute><DashboardLayout><TutorClassPerformancePage /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/tutor/examination" element={<ProtectedRoute><DashboardLayout><TutorClassPerformancePage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/salary-summary" element={<ProtectedRoute><DashboardLayout><TutorSalarySummaryPage /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/tutor/students" element={<ProtectedRoute><DashboardLayout><TutorStudentsPage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/leave-requests" element={<ProtectedRoute><DashboardLayout><TutorLeaveRequestsPage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/profile" element={<ProtectedRoute><DashboardLayout><Profile /></DashboardLayout></ProtectedRoute>} />
       <Route path="/student/overview" element={<ProtectedRoute><DashboardLayout><StudentOverviewPage /></DashboardLayout></ProtectedRoute>} />
@@ -452,6 +454,8 @@ function AppShell() {
       <Route path="/suggestions/mine" element={<ProtectedRoute><DashboardLayout><MySuggestions /></DashboardLayout></ProtectedRoute>} />
       <Route path="/admin/pending-users" element={<AdminRoute><DashboardLayout><AdminPendingUsers /></DashboardLayout></AdminRoute>} />
       <Route path="/admin/suggestions" element={<AdminRoute><DashboardLayout><AdminSuggestions /></DashboardLayout></AdminRoute>} />
+      <Route path="/admin/leave-requests" element={<AdminRoute><DashboardLayout><AdminLeaveRequests /></DashboardLayout></AdminRoute>} />
+      <Route path="/admin/examinations" element={<AdminRoute><DashboardLayout><AdminExaminations /></DashboardLayout></AdminRoute>} />
       <Route path="/admin/timetable" element={<AdminRoute><DashboardLayout><AdminTimetable /></DashboardLayout></AdminRoute>} />
     </Routes>
   );
@@ -468,3 +472,9 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+

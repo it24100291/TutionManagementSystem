@@ -9,9 +9,9 @@ const StudentPaymentsPage = () => {
       <div className="form-box profile-shell dashboard-wide">
         <div className="profile-header">
           <div>
-            <h2>Payments</h2>
+            <h2>Fee & Payment</h2>
             <p className="profile-subtitle">
-              Review your payment summary, outstanding amounts, and full payment history.
+              Review your monthly fee amount, upload payment receipt, and track payment status.
             </p>
           </div>
         </div>
@@ -22,3 +22,4 @@ const StudentPaymentsPage = () => {
 };
 
 export default StudentPaymentsPage;
+

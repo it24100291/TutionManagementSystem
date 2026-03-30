@@ -18,6 +18,7 @@ class UserController {
             'school_name' => $profile['school_name'] ?? null,
             'grade' => $profile['grade'] ?? null,
             'siblings_count' => $profile['siblings_count'] ?? null,
+            'parent_email' => $profile['parent_email'] ?? null,
             'guardian_name' => $profile['guardian_name'] ?? null,
             'guardian_job' => $profile['guardian_job'] ?? null,
             'guardian_nic' => $profile['guardian_nic'] ?? null
@@ -122,7 +123,7 @@ class UserController {
         }
 
         if ($roleName === 'STUDENT') {
-            $studentFields = ['school_name', 'grade', 'siblings_count', 'guardian_name', 'guardian_job', 'guardian_nic'];
+            $studentFields = ['school_name', 'grade', 'siblings_count', 'parent_email', 'guardian_name', 'guardian_job', 'guardian_nic'];
             $studentData = [];
             foreach ($studentFields as $field) {
                 if (!isset($data[$field])) {
@@ -135,6 +136,9 @@ class UserController {
                 }
                 if ($field === 'siblings_count' && !ctype_digit($value)) {
                     Response::error('Siblings count must be numeric');
+                }
+                if ($field === 'parent_email' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    Response::error('Parent email must be a valid email address');
                 }
                 if ($field === 'guardian_nic' && !preg_match('/^(?:\d{9}[Vv]|\d{12})$/', $value)) {
                     Response::error('Guardian NIC number must be either 9 digits followed by V/v or exactly 12 digits');
@@ -149,6 +153,7 @@ class UserController {
                 $studentData['school_name'] = $studentData['school_name'] ?? ($profile['school_name'] ?? '');
                 $studentData['grade'] = $studentData['grade'] ?? ($profile['grade'] ?? '');
                 $studentData['siblings_count'] = $studentData['siblings_count'] ?? (int) ($profile['siblings_count'] ?? 0);
+                $studentData['parent_email'] = $studentData['parent_email'] ?? ($profile['parent_email'] ?? '');
                 $studentData['guardian_name'] = $studentData['guardian_name'] ?? ($profile['guardian_name'] ?? '');
                 $studentData['guardian_job'] = $studentData['guardian_job'] ?? ($profile['guardian_job'] ?? '');
                 $studentData['guardian_nic'] = $studentData['guardian_nic'] ?? ($profile['guardian_nic'] ?? '');
@@ -156,6 +161,7 @@ class UserController {
                 if (
                     $studentData['school_name'] === '' ||
                     $studentData['grade'] === '' ||
+                    $studentData['parent_email'] === '' ||
                     $studentData['guardian_name'] === '' ||
                     $studentData['guardian_job'] === '' ||
                     $studentData['guardian_nic'] === ''

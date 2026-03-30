@@ -38,6 +38,7 @@ const Profile = () => {
         { label: 'School Name', value: profile.school_name || 'N/A' },
         { label: 'Grade', value: profile.grade || 'N/A' },
         { label: 'Siblings in Tuition', value: profile.siblings_count ?? '0' },
+        { label: 'Parent Email', value: profile.parent_email || 'N/A' },
         { label: 'Parent/Guardian Name', value: profile.guardian_name || 'N/A' },
         { label: 'Parent/Guardian Job', value: profile.guardian_job || 'N/A' },
         { label: 'Parent/Guardian NIC', value: profile.guardian_nic || 'N/A' },
@@ -78,6 +79,7 @@ const Profile = () => {
         school_name: res.data.data.school_name || '',
         grade: res.data.data.grade || '',
         siblings_count: res.data.data.siblings_count ?? '',
+        parent_email: res.data.data.parent_email || '',
         guardian_name: res.data.data.guardian_name || '',
         guardian_job: res.data.data.guardian_job || '',
         guardian_nic: res.data.data.guardian_nic || ''
@@ -231,6 +233,10 @@ const Profile = () => {
                 <div className="form-group">
                   <label htmlFor="siblings_count">Number of Siblings studying in our tuition</label>
                   <input id="siblings_count" name="siblings_count" type="number" min="0" value={formData.siblings_count ?? ''} onChange={(e) => setFormData({...formData, siblings_count: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="parent_email">Parent Email Address</label>
+                  <input id="parent_email" name="parent_email" type="email" value={formData.parent_email || ''} onChange={(e) => setFormData({...formData, parent_email: e.target.value})} />
                 </div>
                 <div className="form-group">
                   <label htmlFor="guardian_name">Parent/Guardian Name</label>
