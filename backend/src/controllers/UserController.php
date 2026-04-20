@@ -12,9 +12,14 @@ class UserController {
             'gender' => $profile['gender'] ?? null,
             'address' => $profile['address'],
             'avatar_url' => $profile['avatar_url'],
+
+
             'created_at' => $profile['created_at'],
             'nic_number' => $profile['nic_number'] ?? null,
             'subject' => $profile['subject'] ?? null,
+
+
+            
             'school_name' => $profile['school_name'] ?? null,
             'grade' => $profile['grade'] ?? null,
             'siblings_count' => $profile['siblings_count'] ?? null,

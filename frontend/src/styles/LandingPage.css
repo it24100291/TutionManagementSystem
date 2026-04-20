@@ -16,15 +16,16 @@
 .landing-page,
 .landing-page * {
   box-sizing: border-box;
+
 }
 
 .landing-page {
   min-height: 100vh;
   color: var(--landing-text);
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent 24%),
+    radial-gradient(circle at top left, rgba(29, 94, 233, 0.22), transparent 24%),
     radial-gradient(circle at top right, rgba(96, 165, 250, 0.1), transparent 18%),
-    linear-gradient(180deg, #071426 0%, #08182d 32%, #0a1830 100%);
+    linear-gradient(180deg, #071426 0%, #091d38 32%, #091a38 100%);
 }
 
 .landing-page__container {

@@ -11,6 +11,8 @@ class AdminController {
         $users = $user->getPendingUsers();
         Response::success($users);
     }
+
+    
     
     public function approveUser($userId) {
         $adminId = $_SESSION['user']['id'];

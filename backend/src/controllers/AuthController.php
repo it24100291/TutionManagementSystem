@@ -11,6 +11,8 @@ class AuthController {
             Response::error('Email is not verified.', 403);
         }
 
+
+        
         if (strtotime((string) $record['expires_at']) < time()) {
             $verification->deleteByEmail($normalized['email']);
             Response::error('OTP expired. Please request a new one.', 410);
