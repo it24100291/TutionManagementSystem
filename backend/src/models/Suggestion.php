@@ -7,6 +7,7 @@ class Suggestion {
         $this->ensureReplyColumn();
     }
     
+
     public function create($userId, $type, $title, $description) {
         $stmt = $this->db->prepare("INSERT INTO suggestions_complaints (created_by, type, title, description, status) VALUES (?, ?, ?, ?, 'OPEN')");
         $stmt->execute([$userId, $type, $title, $description]);
@@ -66,6 +67,8 @@ class Suggestion {
             ]
         ];
     }
+    
+
     
     public function update($id, $data) {
         $fields = [];
