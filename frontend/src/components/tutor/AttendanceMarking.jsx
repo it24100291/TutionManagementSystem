@@ -223,7 +223,7 @@ const AttendanceMarking = ({ tutorId }) => {
         setSubmitted(Boolean(classData.attendance_submitted));
 
         const studentsRes = await axios.get(
-          `/api/tutor/class-students.php?class_id=${classData.class_id}&timetable_id=${classData.id}`
+          `/api/tutor/class-students.php?class_id=${classData.class_id || ''}&grade=${encodeURIComponent(classData.grade || '')}&timetable_id=${classData.id}&tutor_id=${tutorId}`
         );
         const studentRows = Array.isArray(studentsRes.data) ? studentsRes.data : [];
         setStudents(studentRows);
@@ -317,7 +317,7 @@ const AttendanceMarking = ({ tutorId }) => {
 
       <div style={styles.header}>
         <h3 style={styles.title}>Attendance Marking</h3>
-        <p style={styles.subtitle}>Mark attendance for the next upcoming class and submit once for today.</p>
+        <p style={styles.subtitle}>Mark attendance only for your first-hour subject for today and submit once.</p>
       </div>
 
       {loading ? (
@@ -333,8 +333,8 @@ const AttendanceMarking = ({ tutorId }) => {
       ) : (
         <>
           <div style={styles.classHeading}>
-            <h4 style={styles.className}>{nextClass.name} - {nextClass.grade}</h4>
-            <div style={styles.classMeta}>Starts at {nextClass.start_time}</div>
+            <h4 style={styles.className}>{nextClass.subject || nextClass.name} - {nextClass.grade}</h4>
+            <div style={styles.classMeta}>First hour starts at {nextClass.start_time}</div>
             {submitted ? <span style={styles.statusPill}>Attendance already submitted</span> : null}
           </div>
 

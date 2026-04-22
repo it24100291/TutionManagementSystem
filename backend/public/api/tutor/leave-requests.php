@@ -3,7 +3,6 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../src/config/env.php';
 require_once __DIR__ . '/../../../src/config/db.php';
-require_once __DIR__ . '/tutor_mock_data.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -56,7 +55,7 @@ try {
     $requiredTables = ['leave_requests', 'students', 'classes', 'timetable'];
     foreach ($requiredTables as $tableName) {
         if (!leaveTableExists($db, $tableName)) {
-            echo json_encode(tutorMockLeaveRequests());
+            echo json_encode([]);
             exit;
         }
     }
@@ -79,7 +78,7 @@ try {
     } elseif (leaveColumnExists($db, 'students', 'full_name')) {
         $studentNameExpression = 's.full_name';
     } else {
-        echo json_encode(tutorMockLeaveRequests());
+        echo json_encode([]);
         exit;
     }
 
@@ -100,8 +99,8 @@ try {
 
     foreach ($requiredColumns as [$tableName, $columnName]) {
         if (!leaveColumnExists($db, $tableName, $columnName)) {
-        echo json_encode(tutorMockLeaveRequests());
-        exit;
+            echo json_encode([]);
+            exit;
         }
     }
 
@@ -145,7 +144,7 @@ try {
     $stmt->execute([$tutorId]);
 
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    echo json_encode(empty($rows) ? tutorMockLeaveRequests() : $rows);
+    echo json_encode($rows ?: []);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);

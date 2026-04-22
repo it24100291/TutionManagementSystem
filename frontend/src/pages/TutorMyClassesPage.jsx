@@ -1,20 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import TodaySchedule from '../components/tutor/TodaySchedule';
+import MyClasses from '../components/tutor/MyClasses';
 
 const actionButtonStyle = {
-  border: '1px solid #bfdbfe',
+  border: 'none',
   borderRadius: '12px',
   padding: '12px 18px',
-  background: '#eff6ff',
-  color: '#1d4ed8',
+  background: '#2563eb',
+  color: '#ffffff',
   fontWeight: 800,
   cursor: 'pointer',
-  boxShadow: '0 8px 18px rgba(37, 99, 235, 0.12)',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
+  boxShadow: '0 10px 20px rgba(37, 99, 235, 0.22)',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
 };
 
-const TutorTodaySchedulePage = () => {
+const TutorMyClassesPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -32,33 +32,31 @@ const TutorTodaySchedulePage = () => {
           }}
         >
           <div>
-            <h2>Today Schedule</h2>
+            <h2>My Classes</h2>
             <p className="profile-subtitle">
-              View only your classes scheduled for today from the central timetable.
+              Review all timetable periods assigned to you from the central timetable.
             </p>
           </div>
           <button
             type="button"
             style={actionButtonStyle}
-            onClick={() => navigate('/tutor/my-classes')}
+            onClick={() => navigate('/tutor/today-schedule')}
             onMouseEnter={(event) => {
               event.currentTarget.style.transform = 'translateY(-1px)';
-              event.currentTarget.style.boxShadow = '0 12px 22px rgba(37, 99, 235, 0.16)';
-              event.currentTarget.style.background = '#dbeafe';
+              event.currentTarget.style.boxShadow = '0 14px 26px rgba(37, 99, 235, 0.28)';
             }}
             onMouseLeave={(event) => {
               event.currentTarget.style.transform = 'translateY(0)';
-              event.currentTarget.style.boxShadow = '0 8px 18px rgba(37, 99, 235, 0.12)';
-              event.currentTarget.style.background = '#eff6ff';
+              event.currentTarget.style.boxShadow = '0 10px 20px rgba(37, 99, 235, 0.22)';
             }}
           >
-            Back to My Classes
+            View Today Schedule
           </button>
         </div>
-        <TodaySchedule tutorId={user?.id} />
+        <MyClasses tutorId={user?.id} />
       </div>
     </div>
   );
 };
 
-export default TutorTodaySchedulePage;
+export default TutorMyClassesPage;

@@ -101,6 +101,15 @@ const Register = () => {
     setFormData((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: '' }));
     setError('');
+
+    if (field === 'email') {
+      setOtpStep(false);
+      setOtpVerified(false);
+      setOtpCode('');
+      setOtpTimer(0);
+      setOtpEmail('');
+      setSuccess('');
+    }
   };
 
   const getFieldClassName = (field) => {
@@ -293,7 +302,7 @@ const Register = () => {
 
       try {
         await sendOtpRequest();
-        setSuccess('Verification code sent to your email.');
+        setSuccess(`Verification code sent to ${formData.email.trim()}.`);
       } catch (err) {
         const message = err.response?.data?.error || err.message || 'Registration failed';
         if (message.toLowerCase().includes('email is already') || message.toLowerCase().includes('separate email')) {
@@ -380,7 +389,7 @@ const Register = () => {
 
     try {
       await sendOtpRequest();
-      setSuccess('Verification code sent to your email.');
+      setSuccess(`Verification code sent to ${formData.email.trim()}.`);
     } catch (err) {
       const message = err.response?.data?.error || 'Failed to resend verification code';
       if (message.toLowerCase().includes('email is already') || message.toLowerCase().includes('separate email')) {
@@ -469,7 +478,7 @@ const Register = () => {
                   <div className="form-group">
                     <label htmlFor="register-email">Email Address</label>
                     <div className="register-inline-action">
-                      <input id="register-email" className={getFieldClassName('email')} type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} required />
+                      <input id="register-email" className={getFieldClassName('email')} type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} required disabled={otpStep || otpVerified} />
                       <button
                         type="button"
                         className="secondary-button register-inline-button"
@@ -479,6 +488,14 @@ const Register = () => {
                         {otpVerified ? 'Verified' : loading && !otpStep ? 'Sending...' : 'Verify'}
                       </button>
                     </div>
+                    <small className="leave-request-note">
+                      Testing mode: the same email can be used for multiple student or tutor registrations. Use a different password for each account.
+                    </small>
+                    {otpEmail ? (
+                      <small className="leave-request-note">
+                        OTP destination: {otpEmail}
+                      </small>
+                    ) : null}
                     {fieldErrors.email ? <div className="field-error-message">{fieldErrors.email}</div> : null}
                   </div>
 
@@ -509,6 +526,7 @@ const Register = () => {
                         </button>
                       </div>
                       <div className="register-otp-meta">
+                        <span>Sent to {otpEmail || formData.email}</span>
                         <span>Expires in: {formatOtpTimer()}</span>
                         <button
                           type="button"

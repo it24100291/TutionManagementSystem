@@ -128,6 +128,21 @@ const statusTone = (status) => {
   return { color: '#991b1b', background: '#fee2e2' };
 };
 
+const resolveReceiptUrl = (path) => {
+  const value = String(path || '').trim();
+  if (!value) {
+    return '';
+  }
+
+  const normalizedPath = value.startsWith('/api/uploads/')
+    ? value.replace(/^\/api/, '')
+    : value;
+
+  return normalizedPath.startsWith('http')
+    ? normalizedPath
+    : `http://localhost:8000${normalizedPath}`;
+};
+
 const StudentPaymentsPanel = ({ studentId }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -259,7 +274,7 @@ const StudentPaymentsPanel = ({ studentId }) => {
                             }}
                           />
                           {row.receipt_path ? (
-                            <a href={`http://localhost:8000${row.receipt_path}`} target="_blank" rel="noreferrer" style={styles.link}>
+                            <a href={resolveReceiptUrl(row.receipt_path)} target="_blank" rel="noreferrer" style={styles.link}>
                               View Uploaded Receipt
                             </a>
                           ) : (

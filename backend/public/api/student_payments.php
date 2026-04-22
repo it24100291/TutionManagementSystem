@@ -31,6 +31,47 @@ function studentPaymentsColumnExists(PDO $db, string $tableName, string $columnN
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function ensureStudentPaymentsTable(PDO $db): string {
+    $tableName = 'payments';
+
+    if (!studentPaymentsTableExists($db, $tableName)) {
+        $db->exec(" 
+            CREATE TABLE payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NULL,
+                student_id INT NULL,
+                payment_month VARCHAR(7) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'Unpaid',
+                receipt_path VARCHAR(255) NULL,
+                payment_date DATE NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        ");
+    }
+
+    $requiredColumns = [
+        'user_id' => 'ALTER TABLE payments ADD COLUMN user_id INT NULL',
+        'student_id' => 'ALTER TABLE payments ADD COLUMN student_id INT NULL',
+        'payment_month' => "ALTER TABLE payments ADD COLUMN payment_month VARCHAR(7) NOT NULL DEFAULT ''",
+        'amount' => 'ALTER TABLE payments ADD COLUMN amount DECIMAL(10,2) NOT NULL DEFAULT 0',
+        'status' => "ALTER TABLE payments ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'Unpaid'",
+        'receipt_path' => 'ALTER TABLE payments ADD COLUMN receipt_path VARCHAR(255) NULL',
+        'payment_date' => 'ALTER TABLE payments ADD COLUMN payment_date DATE NULL',
+        'created_at' => 'ALTER TABLE payments ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        'updated_at' => 'ALTER TABLE payments ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ];
+
+    foreach ($requiredColumns as $column => $sql) {
+        if (!studentPaymentsColumnExists($db, $tableName, $column)) {
+            $db->exec($sql);
+        }
+    }
+
+    return $tableName;
+}
+
 function resolvePaymentsStudentEntityId(PDO $db, int $userId): int {
     if (
         studentPaymentsTableExists($db, 'students') &&
@@ -58,11 +99,11 @@ function normalizeStudentPaymentStatus(?string $status): string {
 }
 
 function resolveStudentPaymentMonthExpr(PDO $db, string $tableName): ?string {
-    if (studentPaymentsColumnExists($db, $tableName, 'month')) {
-        return 'month';
-    }
     if (studentPaymentsColumnExists($db, $tableName, 'payment_month')) {
         return 'payment_month';
+    }
+    if (studentPaymentsColumnExists($db, $tableName, 'month')) {
+        return 'month';
     }
     return null;
 }
@@ -75,12 +116,6 @@ function resolveStudentPaymentDateExpr(PDO $db, string $tableName): ?string {
         return 'created_at';
     }
     return null;
-}
-
-function ensureStudentPaymentColumns(PDO $db, string $tableName): void {
-    if (!studentPaymentsColumnExists($db, $tableName, 'receipt_path')) {
-        $db->exec("ALTER TABLE {$tableName} ADD COLUMN receipt_path VARCHAR(255) NULL");
-    }
 }
 
 function formatStudentPaymentMonthLabel(string $rawMonth): string {
@@ -107,20 +142,33 @@ function resolveStudentPaymentUploadPath(): string {
     return $directory;
 }
 
-function buildStudentPaymentResponse(PDO $db, int $studentId): array {
+function resolveStudentPaymentKeyColumn(PDO $db, string $tableName): ?string {
+    if (studentPaymentsColumnExists($db, $tableName, 'student_id')) {
+        return 'student_id';
+    }
+    if (studentPaymentsColumnExists($db, $tableName, 'user_id')) {
+        return 'user_id';
+    }
+    return null;
+}
+
+function normalizeStudentReceiptPath(string $path): string {
+    if ($path === '') {
+        return '';
+    }
+
+    return str_starts_with($path, '/api/uploads/')
+        ? preg_replace('#^/api#', '', $path, 1)
+        : $path;
+}
+
+function buildStudentPaymentResponse(PDO $db, string $paymentsTable, int $studentId, int $userId): array {
     $result = [
         'history' => [],
     ];
 
-    $paymentsTable = null;
-    if (studentPaymentsTableExists($db, 'payments')) {
-        $paymentsTable = 'payments';
-    } elseif (studentPaymentsTableExists($db, 'fee_payments')) {
-        $paymentsTable = 'fee_payments';
-    }
-
-    if ($paymentsTable !== null && studentPaymentsColumnExists($db, $paymentsTable, 'student_id')) {
-        ensureStudentPaymentColumns($db, $paymentsTable);
+    $keyColumn = resolveStudentPaymentKeyColumn($db, $paymentsTable);
+    if ($keyColumn !== null) {
         $monthColumn = resolveStudentPaymentMonthExpr($db, $paymentsTable);
         $dateColumn = resolveStudentPaymentDateExpr($db, $paymentsTable);
         $statusColumnExists = studentPaymentsColumnExists($db, $paymentsTable, 'status');
@@ -130,6 +178,7 @@ function buildStudentPaymentResponse(PDO $db, int $studentId): array {
         $dateExpr = $dateColumn ? "DATE_FORMAT({$dateColumn}, '%Y-%m-%d')" : "''";
         $statusExpr = $statusColumnExists ? 'status' : "'Unpaid'";
         $receiptExpr = $receiptColumnExists ? 'COALESCE(receipt_path, \'\')' : "''";
+        $keyValue = $keyColumn === 'student_id' ? $studentId : $userId;
 
         $stmt = $db->prepare(" 
             SELECT
@@ -138,10 +187,10 @@ function buildStudentPaymentResponse(PDO $db, int $studentId): array {
                 {$statusExpr} AS status,
                 {$receiptExpr} AS receipt_path
             FROM {$paymentsTable}
-            WHERE student_id = ?
+            WHERE {$keyColumn} = ?
             ORDER BY {$orderExpr}
         ");
-        $stmt->execute([$studentId]);
+        $stmt->execute([$keyValue]);
 
         $history = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -149,7 +198,7 @@ function buildStudentPaymentResponse(PDO $db, int $studentId): array {
                 'month' => formatStudentPaymentMonthLabel((string) ($row['raw_month'] ?? '')),
                 'raw_month' => (string) ($row['raw_month'] ?? ''),
                 'amount' => STUDENT_FIXED_PAYMENT_AMOUNT,
-                'receipt_path' => (string) ($row['receipt_path'] ?? ''),
+                'receipt_path' => normalizeStudentReceiptPath((string) ($row['receipt_path'] ?? '')),
                 'status' => normalizeStudentPaymentStatus($row['status'] ?? 'Unpaid'),
             ];
         }
@@ -175,7 +224,12 @@ function buildStudentPaymentResponse(PDO $db, int $studentId): array {
 
 try {
     $db = getDB();
+    $paymentsTable = ensureStudentPaymentsTable($db);
+
     $inputStudentId = isset($_GET['student_id']) ? trim((string) $_GET['student_id']) : '';
+    if ($inputStudentId === '' && isset($_POST['student_id'])) {
+        $inputStudentId = trim((string) $_POST['student_id']);
+    }
     if ($inputStudentId === '' && isset($_SESSION['student_id'])) {
         $inputStudentId = trim((string) $_SESSION['student_id']);
     }
@@ -194,7 +248,7 @@ try {
 
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     if ($method === 'GET') {
-        echo json_encode(buildStudentPaymentResponse($db, $studentId));
+        echo json_encode(buildStudentPaymentResponse($db, $paymentsTable, $studentId, $userId));
         exit;
     }
 
@@ -203,21 +257,6 @@ try {
         echo json_encode(['error' => 'Method not allowed']);
         exit;
     }
-
-    $paymentsTable = null;
-    if (studentPaymentsTableExists($db, 'payments')) {
-        $paymentsTable = 'payments';
-    } elseif (studentPaymentsTableExists($db, 'fee_payments')) {
-        $paymentsTable = 'fee_payments';
-    }
-
-    if ($paymentsTable === null || !studentPaymentsColumnExists($db, $paymentsTable, 'student_id')) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Payment records are not available yet.']);
-        exit;
-    }
-
-    ensureStudentPaymentColumns($db, $paymentsTable);
 
     $monthValue = trim((string) ($_POST['month'] ?? ''));
     if ($monthValue === '') {
@@ -256,7 +295,7 @@ try {
         exit;
     }
 
-    $receiptPath = '/api/uploads/student-payment-receipts/' . $filename;
+    $receiptPath = '/uploads/student-payment-receipts/' . $filename;
     $monthColumn = resolveStudentPaymentMonthExpr($db, $paymentsTable);
     $dateColumn = resolveStudentPaymentDateExpr($db, $paymentsTable);
 
@@ -271,17 +310,17 @@ try {
     $existingId = $selectStmt->fetchColumn();
 
     if ($existingId !== false) {
-        $updateSql = "UPDATE {$paymentsTable} SET amount = ?, status = 'Pending', receipt_path = ?";
+        $updateSql = "UPDATE {$paymentsTable} SET user_id = ?, amount = ?, status = 'Pending', receipt_path = ?";
         if ($dateColumn && $dateColumn !== 'created_at') {
             $updateSql .= ", {$dateColumn} = CURDATE()";
         }
-        $updateSql .= " WHERE id = ?";
+        $updateSql .= ' WHERE id = ?';
         $updateStmt = $db->prepare($updateSql);
-        $updateStmt->execute([STUDENT_FIXED_PAYMENT_AMOUNT, $receiptPath, (int) $existingId]);
+        $updateStmt->execute([$userId, STUDENT_FIXED_PAYMENT_AMOUNT, $receiptPath, (int) $existingId]);
     } else {
-        $columns = ['student_id', $monthColumn, 'amount', 'status', 'receipt_path'];
-        $values = ['?', '?', '?', '?', '?'];
-        $params = [$studentId, $monthValue, STUDENT_FIXED_PAYMENT_AMOUNT, 'Pending', $receiptPath];
+        $columns = ['user_id', 'student_id', $monthColumn, 'amount', 'status', 'receipt_path'];
+        $values = ['?', '?', '?', '?', '?', '?'];
+        $params = [$userId, $studentId, $monthValue, STUDENT_FIXED_PAYMENT_AMOUNT, 'Pending', $receiptPath];
         if ($dateColumn && $dateColumn !== 'created_at') {
             $columns[] = $dateColumn;
             $values[] = 'CURDATE()';
@@ -294,7 +333,7 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Payment receipt uploaded successfully.',
-        'history' => buildStudentPaymentResponse($db, $studentId)['history'],
+        'history' => buildStudentPaymentResponse($db, $paymentsTable, $studentId, $userId)['history'],
     ]);
 } catch (Throwable $e) {
     http_response_code(500);

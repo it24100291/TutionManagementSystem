@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import axios from '../api/axios';
 
 const PendingUsersTable = ({ title, users, onApprove, onReject }) => (
-  <div className="table-card" style={{ marginBottom: '24px' }}>
+  <div className="table-card" style={{ marginBottom: '24px', paddingTop: '10px' }}>
     <div className="dashboard-header" style={{ marginBottom: '12px' }}>
       <div>
         <h3 style={{ margin: 0 }}>{title}</h3>

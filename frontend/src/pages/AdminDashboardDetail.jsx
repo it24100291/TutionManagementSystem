@@ -86,6 +86,7 @@ const detailConfigs = {
     columns: [
       { key: 'id', label: 'Payment ID' },
       { key: 'full_name', label: 'Student Name' },
+      { key: 'grade', label: 'Grade' },
       { key: 'payment_month', label: 'Month' },
       { key: 'amount', label: 'Amount', currency: true },
       { key: 'receipt_path', label: 'Receipt', link: true },
@@ -107,6 +108,7 @@ const detailConfigs = {
     columns: [
       { key: 'id', label: 'Payment ID' },
       { key: 'full_name', label: 'Student Name' },
+      { key: 'grade', label: 'Grade' },
       { key: 'payment_month', label: 'Month' },
       { key: 'amount', label: 'Amount', currency: true },
       { key: 'receipt_path', label: 'Receipt', link: true },
@@ -117,6 +119,22 @@ const detailConfigs = {
       { key: 'user_id', label: 'User ID', type: 'number', required: true },
       { key: 'amount', label: 'Amount', type: 'number', required: true },
       { key: 'status', label: 'Status', type: 'select', options: ['Paid', 'Pending', 'Unpaid'], required: true },
+    ],
+  },
+  'student-payment-details': {
+    title: 'Student Payment Details',
+    subtitle: 'Review all student fee payment records, receipts, and statuses in one place.',
+    empty: 'No student payment records found.',
+    readOnly: true,
+    columns: [
+      { key: 'id', label: 'Payment ID' },
+      { key: 'full_name', label: 'Student Name' },
+      { key: 'grade', label: 'Grade' },
+      { key: 'payment_month', label: 'Month' },
+      { key: 'amount', label: 'Amount', currency: true },
+      { key: 'receipt_path', label: 'Receipt', link: true },
+      { key: 'status', label: 'Status', badge: true },
+      { key: 'created_at', label: 'Created At', date: true },
     ],
   },
   'active-users': {
@@ -195,6 +213,21 @@ const buildInitialForm = (config, row = {}) => {
   return next;
 };
 
+const resolveReceiptUrl = (path) => {
+  const value = String(path || '').trim();
+  if (!value) {
+    return '';
+  }
+
+  const normalizedPath = value.startsWith('/api/uploads/')
+    ? value.replace(/^\/api/, '')
+    : value;
+
+  return normalizedPath.startsWith('http')
+    ? normalizedPath
+    : `http://localhost:8000${normalizedPath}`;
+};
+
 const renderDashboardModal = (content) => {
   if (typeof document === 'undefined') {
     return null;
@@ -245,10 +278,10 @@ const AdminDashboardDetail = () => {
     return value.toLowerCase().startsWith('grade ') ? value : `Grade ${value}`;
   };
 
-  const usesGradeFilter = metric === 'students' || metric === 'attendance-records';
+  const usesGradeFilter = metric === 'students' || metric === 'attendance-records' || metric === 'student-payment-details';
   const usesDateFilter = metric === 'attendance-records';
   const usesSalaryMonthFilter = metric === 'salary-details';
-  const showsActionButtons = !config?.readOnly || metric === 'salary-details';
+  const showsActionButtons = !config?.readOnly;
   const availableMonthOptions = usesSalaryMonthFilter && Number(selectedYear) === currentYear
     ? monthOptions.filter((month) => Number(month.value) <= currentMonth)
     : monthOptions;
@@ -414,6 +447,23 @@ const AdminDashboardDetail = () => {
       fetchRows();
     } catch (err) {
       setError(err.response?.data?.error || 'Unable to update salary status');
+    }
+  };
+
+  const handleMarkStudentPaymentPaid = async (row) => {
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await axios.put(`/admin/dashboard/student-payment-details/${row.id}`, {
+        user_id: row.user_id,
+        amount: row.amount,
+        status: 'Paid',
+      });
+      setSuccess(res.data.data?.message || 'Payment marked as paid');
+      fetchRows(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Unable to update payment status');
     }
   };
 
@@ -596,7 +646,9 @@ const AdminDashboardDetail = () => {
           <div className="dashboard-empty">
             {metric === 'attendance-records'
               ? 'No attendance records found for the selected grade.'
-              : 'No students found for the selected grade.'}
+              : metric === 'student-payment-details'
+                ? 'No student payment records found for the selected grade.'
+                : 'No students found for the selected grade.'}
           </div>
         ) : (
           <div className="table-card">
@@ -614,12 +666,40 @@ const AdminDashboardDetail = () => {
                   <tr key={row.id || `${metric}-${index}`}>
                     {(config?.columns || []).map((column) => (
                       <td key={column.key} className={column.className || ''}>
-                        {column.badge ? (
+                        {metric === 'student-payment-details' && column.key === 'status' ? (
+                          String(row.status || '').toLowerCase() === 'paid' ? (
+                            <button type="button" className="payment-status-button paid-status-button" disabled>
+                              Paid
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="payment-status-button pending-status-button"
+                              onClick={() => handleMarkStudentPaymentPaid(row)}
+                            >
+                              Pending
+                            </button>
+                          )
+                        ) : metric === 'salary-details' && column.key === 'status' ? (
+                          String(row.status || '').toLowerCase() === 'paid' ? (
+                            <button type="button" className="payment-status-button paid-status-button" disabled>
+                              Paid
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="payment-status-button pending-status-button"
+                              onClick={() => handleMarkSalaryPaid(row)}
+                            >
+                              Pending
+                            </button>
+                          )
+                        ) : column.badge ? (
                           <span className={`profile-badge ${String(row[column.key] || '').toLowerCase()}`}>
                             {row[column.key] || 'N/A'}
                           </span>
                         ) : column.link ? (
-                          row[column.key] ? <a href={`http://localhost:8000${row[column.key]}`} target="_blank" rel="noreferrer">View Receipt</a> : 'N/A'
+                          row[column.key] ? <a href={resolveReceiptUrl(row[column.key])} target="_blank" rel="noreferrer">View Receipt</a> : 'N/A'
                         ) : (
                           column.key === 'grade' ? (normalizeGrade(row.grade) || 'N/A') : formatValue(row, column)
                         )}
@@ -661,6 +741,9 @@ const AdminDashboardDetail = () => {
 };
 
 export default AdminDashboardDetail;
+
+
+
 
 
 

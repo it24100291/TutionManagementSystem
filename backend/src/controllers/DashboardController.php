@@ -26,6 +26,7 @@ class DashboardController {
             'classes',
             'paid-payments',
             'pending-payments',
+            'student-payment-details',
             'active-users',
             'salary-details',
             'attendance-records',
@@ -56,6 +57,7 @@ class DashboardController {
             'tutors' => $this->updateTutor($id, $data),
             'classes' => $this->updateClass($id, $data),
             'paid-payments', 'pending-payments' => $this->updatePayment($id, $data),
+            'student-payment-details' => $this->updatePayment($id, $data),
             'active-users' => $this->updateActiveUser($id, $data),
             'salary-details' => $this->updateSalaryDetail($id, $data),
             default => Response::error('Update is not available for this list', 400),
@@ -163,6 +165,7 @@ class DashboardController {
             'classes' => $this->fetchClasses(),
             'paid-payments' => $this->fetchPaymentsByStatus('Paid'),
             'pending-payments' => $this->fetchPaymentsByStatus('Unpaid'),
+            'student-payment-details' => $this->fetchAllStudentPayments(),
             'active-users' => $this->fetchActiveUsers(),
             'salary-details' => $this->fetchSalaryDetails($selectedMonth, $selectedYear),
             'attendance-records' => $this->fetchAttendanceRecords(),
@@ -227,13 +230,73 @@ class DashboardController {
     }
 
     private function fetchPaymentsByStatus($status) {
+        return array_values(array_filter(
+            $this->fetchAllStudentPayments(),
+            static fn ($row) => strcasecmp((string) ($row['status'] ?? ''), (string) $status) === 0
+        ));
+    }
+
+    private function fetchAllStudentPayments() {
         if (!$this->tableExists('payments')) {
             return [];
         }
 
-        $stmt = $this->db->prepare("SELECT * FROM payments WHERE status = ? ORDER BY id DESC");
-        $stmt->execute([$status]);
-        return $stmt->fetchAll();
+        $stmt = $this->db->query("SELECT * FROM payments ORDER BY id DESC");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return array_map(function ($row) {
+            $userId = isset($row['user_id']) ? (int) $row['user_id'] : 0;
+            $studentId = isset($row['student_id']) ? (int) $row['student_id'] : 0;
+            $fullName = '';
+            $grade = '';
+
+            if (
+                $userId > 0 &&
+                $this->tableExists('users') &&
+                $this->tableExists('students') &&
+                $this->columnExists('students', 'user_id')
+            ) {
+                $userStmt = $this->db->prepare("
+                    SELECT u.full_name, s.grade
+                    FROM users u
+                    LEFT JOIN students s ON s.user_id = u.id
+                    WHERE u.id = ?
+                    LIMIT 1
+                ");
+                $userStmt->execute([$userId]);
+                $userRow = $userStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $fullName = (string) ($userRow['full_name'] ?? '');
+                $grade = (string) ($userRow['grade'] ?? '');
+            }
+
+            if ($fullName === '' && $studentId > 0 && $this->tableExists('students') && $this->tableExists('users') && $this->columnExists('students', 'user_id')) {
+                $studentStmt = $this->db->prepare("SELECT u.full_name, s.grade FROM students s JOIN users u ON u.id = s.user_id WHERE s.id = ? LIMIT 1");
+                $studentStmt->execute([$studentId]);
+                $studentRow = $studentStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                $fullName = (string) ($studentRow['full_name'] ?? '');
+                $grade = (string) ($studentRow['grade'] ?? '');
+            }
+
+            $paymentMonth = (string) ($row['payment_month'] ?? $row['month'] ?? '');
+            if ($paymentMonth !== '' && preg_match('/^\d{4}-\d{2}$/', $paymentMonth)) {
+                $date = DateTime::createFromFormat('Y-m', $paymentMonth);
+                if ($date) {
+                    $paymentMonth = $date->format('F Y');
+                }
+            }
+
+            return [
+                'id' => (int) ($row['id'] ?? 0),
+                'user_id' => $userId,
+                'full_name' => $fullName !== '' ? $fullName : 'Student',
+                'grade' => $grade !== '' ? $grade : 'N/A',
+                'payment_month' => $paymentMonth !== '' ? $paymentMonth : 'N/A',
+                'amount' => (float) ($row['amount'] ?? 0),
+                'receipt_path' => (string) ($row['receipt_path'] ?? ''),
+                'status' => (string) ($row['status'] ?? 'Unpaid'),
+                'created_at' => $row['created_at'] ?? null,
+            ];
+        }, $rows);
     }
 
     private function fetchActiveUsers() {
@@ -521,7 +584,7 @@ class DashboardController {
         if (!is_numeric($amount)) {
             Response::error('Amount must be numeric');
         }
-        if (!in_array($status, ['Paid', 'Unpaid'], true)) {
+        if (!in_array($status, ['Paid', 'Pending', 'Unpaid'], true)) {
             Response::error('Invalid payment status');
         }
 
@@ -740,4 +803,7 @@ class DashboardController {
         }
     }
 }
+
+
+
 

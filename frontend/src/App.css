@@ -514,7 +514,7 @@ html {
 .tutor-dashboard-brand-subtitle {
   margin: 4px 0 0;
   color: rgba(219, 234, 254, 0.88);
-  font-size: 0.82rem;
+  font-size: 1.05rem;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -1156,15 +1156,22 @@ html {
   transition: all 0.3s ease;
 }
 .admin-sidebar-link:hover {
-  background: #e2e8f0;
-  color: #1f2937;
-  text-decoration: none;
+    background: #e2e8f0;
+    color: #1f2937;
+    text-decoration: none;
+  }
+  .admin-sidebar-link.active {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 12px 20px rgba(37, 99, 235, 0.22);
+  }
+
+.admin-sidebar-link span {
+  display: block;
+  width: 100%;
+  text-align: center;
 }
-.admin-sidebar-link.active {
-  background: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 12px 20px rgba(37, 99, 235, 0.22);
-}
+
 .admin-dashboard-content {
   flex: 1;
   min-width: 0;
@@ -2120,6 +2127,28 @@ p { margin: 10px 0; }
 .role-pill { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 999px; background: linear-gradient(135deg, #e6f3ff 0%, #d9ebfa 100%); color: #175985; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .action-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .action-row button { margin-right: 0; }
+.payment-status-button {
+  min-width: 108px;
+  margin-right: 0;
+  box-shadow: none;
+}
+.pending-status-button {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.pending-status-button:hover {
+  background: #c8f5d7;
+}
+.paid-status-button,
+.paid-status-button:disabled {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 .truncate-cell { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .filter-card { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; padding: 18px; border-radius: 18px; background: linear-gradient(135deg, #f7fbff 0%, #eaf4fb 100%); border: 1px solid #dce8f1; }
 .filter-group { min-width: 180px; flex: 1; }
@@ -2613,3 +2642,7 @@ p { margin: 10px 0; }
   .dashboard-table { min-width: 760px; }
   .leave-request-reason-cell { max-width: none; }
 }
+
+
+
+

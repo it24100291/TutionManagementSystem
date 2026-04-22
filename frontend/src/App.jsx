@@ -17,6 +17,7 @@ import SuggestionForm from './pages/SuggestionForm';
 import MySuggestions from './pages/MySuggestions';
 import TutorOverviewPage from './pages/TutorOverviewPage';
 import TutorTodaySchedulePage from './pages/TutorTodaySchedulePage';
+import TutorMyClassesPage from './pages/TutorMyClassesPage';
 import TutorAttendancePage from './pages/TutorAttendancePage';
 import TutorClassPerformancePage from './pages/TutorClassPerformancePage';
 import TutorSalarySummaryPage from './pages/TutorSalarySummaryPage';
@@ -104,6 +105,7 @@ function StudentSidebar({ items }) {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.to === '/admin/dashboard'}
             className={({ isActive }) => `student-sidebar-link${isActive ? ' active' : ''}`}
           >
             <span>{item.label}</span>
@@ -122,6 +124,7 @@ function AdminSidebar({ items }) {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.to === '/admin/dashboard'}
             className={({ isActive }) => `admin-sidebar-link${isActive ? ' active' : ''}`}
           >
             <span>{item.label}</span>
@@ -147,25 +150,26 @@ function DashboardLayout({ children }) {
   const navItems = [
     { to: '/admin/dashboard', label: 'Dashboard', roles: ['ADMIN'] },
     { to: '/profile', label: 'Profile', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
-      { to: '/tutor/overview', label: 'Overview', roles: ['TUTOR'] },
-      { to: '/tutor/leave-requests', label: 'Leave Requests', roles: ['TUTOR'] },
-      { to: '/tutor/today-schedule', label: 'Today Schedule', roles: ['TUTOR'] },
-      { to: '/tutor/attendance', label: 'Attendance', roles: ['TUTOR'] },
-            { to: '/tutor/examination', label: 'Exam & Results', roles: ['TUTOR'] },
-    { to: '/tutor/salary-summary', label: 'Salary Summary', roles: ['TUTOR'] },
-    { to: '/student/overview', label: 'Overview', roles: ['STUDENT'] },
-      { to: '/student/attendance', label: 'Attendance', roles: ['STUDENT'] },
-      { to: '/student/payments', label: 'Fee & Payment', roles: ['STUDENT'] },
-      { to: '/student/exams-results', label: 'Exams & Results', roles: ['STUDENT'] },
-      { to: '/student/timetable', label: 'Timetable', roles: ['STUDENT'] },
-      { to: '/suggestions/new', label: 'New Suggestion', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
-      { to: '/suggestions/mine', label: 'My Suggestions', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
     { to: '/admin/pending-users', label: 'Pending Users', roles: ['ADMIN'] },
+    { to: '/admin/leave-requests', label: 'Leave Requests', roles: ['ADMIN'] },
+    { to: '/admin/dashboard/student-payment-details', label: 'Student Payment Details', roles: ['ADMIN'] },
+    { to: '/admin/dashboard/salary-details', label: 'Salary Details', roles: ['ADMIN'] },
+    { to: '/admin/timetable', label: 'Timetable', roles: ['ADMIN'] },
+    { to: '/admin/examinations', label: 'Exams & Results', roles: ['ADMIN'] },
     { to: '/admin/suggestions', label: 'All Suggestions', roles: ['ADMIN'] },
-      { to: '/admin/leave-requests', label: 'Leave Requests', roles: ['ADMIN'] },
-      { to: '/admin/dashboard/salary-details', label: 'Salary Details', roles: ['ADMIN'] },
-      { to: '/admin/examinations', label: 'Exams & Results', roles: ['ADMIN'] },
-      { to: '/admin/timetable', label: 'Timetable', roles: ['ADMIN'] }
+      { to: '/tutor/overview', label: 'Overview', roles: ['TUTOR'] },
+            { to: '/tutor/my-classes', label: 'My Classes', roles: ['TUTOR'] },
+      { to: '/tutor/attendance', label: 'Attendance', roles: ['TUTOR'] },
+      { to: '/tutor/salary-summary', label: 'Salary Summary', roles: ['TUTOR'] },
+      { to: '/tutor/leave-requests', label: 'Leave Requests', roles: ['TUTOR'] },
+      { to: '/tutor/examination', label: 'Exam & Results', roles: ['TUTOR'] },
+      { to: '/student/overview', label: 'Overview', roles: ['STUDENT'] },
+      { to: '/student/timetable', label: 'Timetable', roles: ['STUDENT'] },
+      { to: '/student/payments', label: 'Fee & Payment', roles: ['STUDENT'] },
+      { to: '/student/attendance', label: 'Attendance', roles: ['STUDENT'] },
+      { to: '/student/exams-results', label: 'Exam & Results', roles: ['STUDENT'] },
+      { to: '/suggestions/mine', label: 'My Suggestion', roles: ['STUDENT', 'TUTOR', 'PARENT', 'ADMIN'] },
+      { to: '/suggestions/new', label: 'New Suggestion/Complaints', roles: ['STUDENT', 'TUTOR', 'PARENT'] },
       ];
   const visibleNavItems = navItems.filter((item) => item.roles.includes(roleName));
   const adminNavItems = visibleNavItems.filter((item) => !(isAdminLayout && item.to === '/profile'));
@@ -437,6 +441,7 @@ function AppShell() {
       <Route path="/tutor/dashboard" element={<ProtectedRoute><Navigate to="/tutor/overview" replace /></ProtectedRoute>} />
       <Route path="/tutor/overview" element={<ProtectedRoute><DashboardLayout><TutorOverviewPage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/today-schedule" element={<ProtectedRoute><DashboardLayout><TutorTodaySchedulePage /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/tutor/my-classes" element={<ProtectedRoute><DashboardLayout><TutorMyClassesPage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/attendance" element={<ProtectedRoute><DashboardLayout><TutorAttendancePage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/examination" element={<ProtectedRoute><DashboardLayout><TutorClassPerformancePage /></DashboardLayout></ProtectedRoute>} />
       <Route path="/tutor/salary-summary" element={<ProtectedRoute><DashboardLayout><TutorSalarySummaryPage /></DashboardLayout></ProtectedRoute>} />
@@ -472,6 +477,14 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+
+
 
 
 

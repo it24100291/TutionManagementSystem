@@ -3,7 +3,6 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../src/config/env.php';
 require_once __DIR__ . '/../../../src/config/db.php';
-require_once __DIR__ . '/tutor_mock_data.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -88,7 +87,7 @@ function resolveTutorProfileId(PDO $db, int $tutorId): int {
 
 function resolveTutorRatePerHour(PDO $db, int $tutorId): int {
     if (!salaryTableExists($db, 'tutors') || !salaryColumnExists($db, 'tutors', 'subject')) {
-        return 700;
+        return 0;
     }
 
     $hasUserId = salaryColumnExists($db, 'tutors', 'user_id');
@@ -188,9 +187,7 @@ try {
         'current_status' => $currentStatus,
         'history' => $history,
     ];
-
-    $shouldUseMock = $hoursThisMonth === 0 && $ratePerHour === 0 && empty($history);
-    echo json_encode($shouldUseMock ? tutorMockSalarySummary() : $result);
+    echo json_encode($result);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);

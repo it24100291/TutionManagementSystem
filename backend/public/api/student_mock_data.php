@@ -95,22 +95,88 @@ function studentMockPayments(int $studentId): array
     ];
 }
 
-function studentMockExams(int $studentId): array
+function studentMockExams(int $studentId, ?string $selectedTerm = null): array
 {
-    $results = [
-        ['exam_name' => 'Monthly Test 1', 'subject' => 'Mathematics', 'marks_obtained' => 78, 'total_marks' => 100, 'grade' => 'B+'],
-        ['exam_name' => 'Monthly Test 1', 'subject' => 'Science', 'marks_obtained' => 84, 'total_marks' => 100, 'grade' => 'A'],
-        ['exam_name' => 'Monthly Test 1', 'subject' => 'English', 'marks_obtained' => 72, 'total_marks' => 100, 'grade' => 'B'],
-        ['exam_name' => 'Monthly Test 1', 'subject' => 'History', 'marks_obtained' => 81, 'total_marks' => 100, 'grade' => 'A-'],
+    $selected = trim((string) ($selectedTerm ?? 'Term 1'));
+    $terms = ['Term 1', 'Term 2', 'Term 3'];
+    if (!in_array($selected, $terms, true)) {
+        $selected = 'Term 1';
+    }
+
+    $subjects = ['Tamil', 'Maths', 'Science', 'Religion', 'English', 'Civics', 'History', 'Geography', 'ICT', 'Health Science', 'Sinhala'];
+    $baseResults = [
+        'Term 1' => [
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Tamil', 'marks_obtained' => 76, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Maths', 'marks_obtained' => 78, 'highest_marks' => 91, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Science', 'marks_obtained' => 84, 'highest_marks' => 95, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Religion', 'marks_obtained' => 73, 'total_marks' => 100, 'grade' => 'B'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'English', 'marks_obtained' => 72, 'total_marks' => 100, 'grade' => 'B'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Civics', 'marks_obtained' => 69, 'total_marks' => 100, 'grade' => 'B'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'History', 'marks_obtained' => 81, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Geography', 'marks_obtained' => 75, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'ICT', 'marks_obtained' => 88, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Health Science', 'marks_obtained' => 74, 'total_marks' => 100, 'grade' => 'B'],
+            ['exam_name' => 'Monthly Test 1', 'term' => 'Term 1', 'subject' => 'Sinhala', 'marks_obtained' => 71, 'total_marks' => 100, 'grade' => 'B'],
+        ],
+        'Term 2' => [
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Tamil', 'marks_obtained' => 79, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Maths', 'marks_obtained' => 82, 'highest_marks' => 94, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Science', 'marks_obtained' => 79, 'highest_marks' => 90, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Religion', 'marks_obtained' => 77, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'English', 'marks_obtained' => 75, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Civics', 'marks_obtained' => 72, 'total_marks' => 100, 'grade' => 'B'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'History', 'marks_obtained' => 86, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Geography', 'marks_obtained' => 80, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'ICT', 'marks_obtained' => 91, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Health Science', 'marks_obtained' => 76, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Monthly Test 2', 'term' => 'Term 2', 'subject' => 'Sinhala', 'marks_obtained' => 74, 'total_marks' => 100, 'grade' => 'B'],
+        ],
+        'Term 3' => [
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Tamil', 'marks_obtained' => 81, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Maths', 'marks_obtained' => 88, 'highest_marks' => 96, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Science', 'marks_obtained' => 83, 'highest_marks' => 92, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Religion', 'marks_obtained' => 80, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'English', 'marks_obtained' => 77, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Civics', 'marks_obtained' => 74, 'total_marks' => 100, 'grade' => 'B'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'History', 'marks_obtained' => 85, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Geography', 'marks_obtained' => 82, 'total_marks' => 100, 'grade' => 'A-'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'ICT', 'marks_obtained' => 93, 'total_marks' => 100, 'grade' => 'A'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Health Science', 'marks_obtained' => 79, 'total_marks' => 100, 'grade' => 'B+'],
+            ['exam_name' => 'Final Term Test', 'term' => 'Term 3', 'subject' => 'Sinhala', 'marks_obtained' => 78, 'total_marks' => 100, 'grade' => 'B+'],
+        ],
     ];
+    $results = [];
+    $rowsBySubject = [];
+    foreach ($baseResults[$selected] as $row) {
+        $rowsBySubject[$row['subject']] = $row;
+    }
+    foreach ($subjects as $subject) {
+        $results[] = $rowsBySubject[$subject] ?? [
+            'exam_name' => '',
+            'term' => $selected,
+            'subject' => $subject,
+            'marks_obtained' => '',
+            'highest_marks' => '',
+            'total_marks' => 100,
+            'grade' => '',
+        ];
+    }
 
     $sum = 0;
+    $count = 0;
     foreach ($results as $row) {
+        if ($row['marks_obtained'] === '') {
+            continue;
+        }
         $sum += (int) $row['marks_obtained'];
+        $count++;
     }
 
     return [
-        'average_mark' => (int) round($sum / count($results)),
+        'available_terms' => $terms,
+        'selected_term' => $selected,
+        'total_marks_obtained' => $sum,
+        'average_mark' => $count > 0 ? (int) round($sum / $count) : 0,
         'results' => $results,
     ];
 }

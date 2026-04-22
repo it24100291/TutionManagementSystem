@@ -82,6 +82,37 @@ const formatMark = (value) => {
   return Number.isFinite(numeric) ? numeric : value;
 };
 
+const visibleSubjectsForGrade = (subjects, grade) => {
+  const gradeValue = String(grade || '').trim();
+  if (['Grade 6', 'Grade 7', 'Grade 8', 'Grade 9'].includes(gradeValue)) {
+    return subjects.filter((subject) => String(subject).trim() !== 'Commerce');
+  }
+
+  if (['Grade 10', 'Grade 11'].includes(gradeValue)) {
+    const preferredOrder = [
+      'Tamil',
+      'Religion',
+      'Science',
+      'Maths',
+      'English',
+      'History',
+      'ICT',
+      'Health Science',
+      'Commerce',
+      'Geography',
+      'Civics',
+      'Sinhala',
+    ];
+
+    const subjectSet = new Set(subjects.map((subject) => String(subject).trim()));
+    const orderedSubjects = preferredOrder.filter((subject) => subjectSet.has(subject));
+    const remainingSubjects = subjects.filter((subject) => !preferredOrder.includes(String(subject).trim()));
+    return [...orderedSubjects, ...remainingSubjects];
+  }
+
+  return subjects;
+};
+
 const AdminExaminations = () => {
   const [formValues, setFormValues] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
@@ -210,11 +241,13 @@ const AdminExaminations = () => {
       return [];
     }
 
+    const visibleSubjects = visibleSubjectsForGrade(results.subjects, results?.exam?.grade);
+
     return results.classes.map((classGroup) => {
       const rows = (classGroup.rows || []).map((row) => {
-        const subjectValues = results.subjects.map((subject) => toNumber(row.marks?.[subject]));
+        const subjectValues = visibleSubjects.map((subject) => toNumber(row.marks?.[subject]));
         const total = subjectValues.reduce((sum, value) => sum + value, 0);
-        const average = results.subjects.length > 0 ? total / results.subjects.length : 0;
+        const average = visibleSubjects.length > 0 ? total / visibleSubjects.length : 0;
         return {
           ...row,
           total,
@@ -233,6 +266,7 @@ const AdminExaminations = () => {
 
       return {
         ...classGroup,
+        subjects: visibleSubjects,
         rows,
       };
     });
@@ -319,7 +353,7 @@ const AdminExaminations = () => {
                       <thead>
                         <tr>
                           <th>Student Name</th>
-                          {results.subjects.map((subject) => (
+                          {classGroup.subjects.map((subject) => (
                             <th key={subject}>{subject}</th>
                           ))}
                           <th>Total</th>
@@ -330,7 +364,7 @@ const AdminExaminations = () => {
                         {classGroup.rows.map((row) => (
                           <tr key={row.student_id}>
                             <td>{row.student_name}</td>
-                            {results.subjects.map((subject) => (
+                            {classGroup.subjects.map((subject) => (
                               <td key={`${row.student_id}-${subject}`}>{formatMark(row.marks?.[subject])}</td>
                             ))}
                             <td>{row.total}</td>
