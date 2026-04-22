@@ -15,7 +15,7 @@ const StudentAttendancePage = () => {
             </p>
           </div>
         </div>
-        <StudentAttendancePanel studentId={user?.id} />
+        <StudentAttendancePanel studentId={user?.id} user={user} />
       </div>
     </div>
   );

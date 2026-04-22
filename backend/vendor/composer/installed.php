@@ -3,7 +3,7 @@
         'name' => 'user-management/api',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '331e5bb15abff1ab69e8719e4fe5dc47a7cc7750',
+        'reference' => '480fb1f3df122a15a3c6e8bc80936e79d96b8d48',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -31,7 +31,7 @@
         'user-management/api' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '331e5bb15abff1ab69e8719e4fe5dc47a7cc7750',
+            'reference' => '480fb1f3df122a15a3c6e8bc80936e79d96b8d48',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
