@@ -43,7 +43,7 @@ class ExaminationController
                 exam_id INT UNSIGNED NOT NULL,
                 student_id INT UNSIGNED NOT NULL,
                 subject VARCHAR(100) NOT NULL,
-                marks DECIMAL(5,2) NOT NULL,
+                marks INT UNSIGNED NOT NULL,
                 tutor_id INT UNSIGNED NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -384,13 +384,13 @@ class ExaminationController
                 if ($studentId <= 0 || !isset($allowedStudents[$studentId])) {
                     Response::error('Unauthorized student selection.');
                 }
-                if ($value === '' || !is_numeric($value)) {
-                    Response::error('Marks must be numeric.');
+                if ($value === '' || !preg_match('/^\d+$/', $value)) {
+                    Response::error('Marks must be a whole number.');
                 }
 
-                $numericMarks = (float) $value;
+                $numericMarks = (int) $value;
                 if ($numericMarks < 0 || $numericMarks > 100) {
-                    Response::error('Marks must be between 0 and 100.');
+                    Response::error('Marks must be an integer between 0 and 100.');
                 }
 
                 $stmt->execute([$examId, $studentId, $tutor['subject'], $numericMarks, $tutor['tutor_id']]);

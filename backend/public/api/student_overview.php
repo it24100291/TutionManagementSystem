@@ -3,7 +3,6 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../src/config/env.php';
 require_once __DIR__ . '/../../src/config/db.php';
-require_once __DIR__ . '/student_mock_data.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -66,10 +65,74 @@ function resolveStudentEntityId(PDO $db, int $userId): int {
     return $userId;
 }
 
+function resolveStudentOverviewGrade(PDO $db, int $userId, int $studentId): ?string {
+    if (
+        studentOverviewTableExists($db, 'students') &&
+        studentOverviewColumnExists($db, 'students', 'grade')
+    ) {
+        if (studentOverviewColumnExists($db, 'students', 'user_id')) {
+            $stmt = $db->prepare("SELECT grade FROM students WHERE user_id = ? LIMIT 1");
+            $stmt->execute([$userId]);
+            $grade = $stmt->fetchColumn();
+            if ($grade !== false && trim((string) $grade) !== '') {
+                return trim((string) $grade);
+            }
+        }
+
+        if (studentOverviewColumnExists($db, 'students', 'id')) {
+            $stmt = $db->prepare("SELECT grade FROM students WHERE id = ? LIMIT 1");
+            $stmt->execute([$studentId]);
+            $grade = $stmt->fetchColumn();
+            if ($grade !== false && trim((string) $grade) !== '') {
+                return trim((string) $grade);
+            }
+        }
+    }
+
+    return null;
+}
+
+function normalizeStudentOverviewGrade(?string $grade): ?string {
+    $value = trim((string) $grade);
+    if ($value === '') {
+        return null;
+    }
+
+    if (preg_match('/^Grade\s*(\d+)$/i', $value, $matches)) {
+        return 'Grade ' . $matches[1];
+    }
+
+    if (ctype_digit($value)) {
+        return 'Grade ' . $value;
+    }
+
+    return $value;
+}
+
+function buildStudentOverviewGradeVariants(?string $grade): array {
+    $value = normalizeStudentOverviewGrade($grade);
+    if ($value === null) {
+        return [];
+    }
+
+    $variants = [$value];
+    if (preg_match('/^Grade\s*(\d+)$/i', $value, $matches)) {
+        $variants[] = $matches[1];
+    }
+
+    return array_values(array_unique(array_filter($variants)));
+}
+
+function studentOverviewTodayName(): string {
+    return date('l');
+}
+
 try {
     $db = getDB();
     $userId = (int) $inputStudentId;
     $studentId = resolveStudentEntityId($db, $userId);
+    $studentGrade = normalizeStudentOverviewGrade(resolveStudentOverviewGrade($db, $userId, $studentId));
+    $gradeVariants = buildStudentOverviewGradeVariants($studentGrade);
 
     $result = [
         'total_enrolled_classes' => 0,
@@ -95,6 +158,19 @@ try {
         $stmt = $db->prepare("SELECT COUNT(*) FROM students WHERE id = ? AND class_id IS NOT NULL");
         $stmt->execute([$studentId]);
         $result['total_enrolled_classes'] = (int) $stmt->fetchColumn();
+    } elseif (
+        !empty($gradeVariants) &&
+        studentOverviewTableExists($db, 'timetable') &&
+        studentOverviewColumnExists($db, 'timetable', 'grade')
+    ) {
+        $placeholders = implode(',', array_fill(0, count($gradeVariants), '?'));
+        $stmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM timetable
+            WHERE grade IN ({$placeholders})
+        ");
+        $stmt->execute($gradeVariants);
+        $result['total_enrolled_classes'] = (int) $stmt->fetchColumn();
     }
 
     if (
@@ -119,11 +195,21 @@ try {
 
     if (
         studentOverviewTableExists($db, 'payments') &&
-        studentOverviewColumnExists($db, 'payments', 'student_id') &&
+        (
+            studentOverviewColumnExists($db, 'payments', 'student_id') ||
+            studentOverviewColumnExists($db, 'payments', 'user_id')
+        ) &&
         studentOverviewColumnExists($db, 'payments', 'status')
     ) {
-        $stmt = $db->prepare("SELECT COUNT(*) FROM payments WHERE student_id = ? AND status = 'Unpaid'");
-        $stmt->execute([$studentId]);
+        $keyColumn = studentOverviewColumnExists($db, 'payments', 'student_id') ? 'student_id' : 'user_id';
+        $keyValue = $keyColumn === 'student_id' ? $studentId : $userId;
+        $stmt = $db->prepare("
+            SELECT COUNT(*)
+            FROM payments
+            WHERE {$keyColumn} = ?
+              AND LOWER(status) IN ('unpaid', 'pending')
+        ");
+        $stmt->execute([$keyValue]);
         $result['pending_payments_count'] = (int) $stmt->fetchColumn();
     } elseif (
         studentOverviewTableExists($db, 'fee_payments') &&
@@ -136,68 +222,108 @@ try {
     }
 
     if (
-        studentOverviewTableExists($db, 'students') &&
-        studentOverviewColumnExists($db, 'students', 'id') &&
-        studentOverviewColumnExists($db, 'students', 'class_id') &&
         studentOverviewTableExists($db, 'exams') &&
-        studentOverviewColumnExists($db, 'exams', 'class_id')
+        !empty($gradeVariants)
     ) {
-        $stmt = $db->prepare("
-            SELECT COUNT(*)
-            FROM exams
-            WHERE class_id IN (
-                SELECT class_id FROM students WHERE id = ? AND class_id IS NOT NULL
-            )
-        ");
-        $stmt->execute([$studentId]);
-        $result['upcoming_exams_count'] = (int) $stmt->fetchColumn();
+        if (studentOverviewColumnExists($db, 'exams', 'grade')) {
+            $placeholders = implode(',', array_fill(0, count($gradeVariants), '?'));
+            $dateFilter = studentOverviewColumnExists($db, 'exams', 'exam_date')
+                ? ' AND exam_date >= CURDATE()'
+                : '';
+            $stmt = $db->prepare("
+                SELECT COUNT(*)
+                FROM exams
+                WHERE grade IN ({$placeholders}){$dateFilter}
+            ");
+            $stmt->execute($gradeVariants);
+            $result['upcoming_exams_count'] = (int) $stmt->fetchColumn();
+        } elseif (
+            studentOverviewColumnExists($db, 'exams', 'class_id') &&
+            studentOverviewTableExists($db, 'students') &&
+            studentOverviewColumnExists($db, 'students', 'id') &&
+            studentOverviewColumnExists($db, 'students', 'class_id')
+        ) {
+            $stmt = $db->prepare("
+                SELECT COUNT(*)
+                FROM exams
+                WHERE class_id IN (
+                    SELECT class_id FROM students WHERE id = ? AND class_id IS NOT NULL
+                )
+            ");
+            $stmt->execute([$studentId]);
+            $result['upcoming_exams_count'] = (int) $stmt->fetchColumn();
+        }
     }
 
     if (
-        studentOverviewTableExists($db, 'students') &&
-        studentOverviewColumnExists($db, 'students', 'id') &&
-        studentOverviewColumnExists($db, 'students', 'class_id') &&
         studentOverviewTableExists($db, 'timetable') &&
-        studentOverviewColumnExists($db, 'timetable', 'class_id') &&
-        studentOverviewColumnExists($db, 'timetable', 'class_date')
+        !empty($gradeVariants)
     ) {
-        $classNameExpr = "'Class'";
         if (
-            studentOverviewTableExists($db, 'classes') &&
-            studentOverviewColumnExists($db, 'classes', 'id') &&
-            studentOverviewColumnExists($db, 'classes', 'name')
+            studentOverviewColumnExists($db, 'timetable', 'grade') &&
+            studentOverviewColumnExists($db, 'timetable', 'day') &&
+            studentOverviewColumnExists($db, 'timetable', 'time_slot')
         ) {
-            $classNameExpr = 'c.name';
-        }
-
-        $gradeExpr = "''";
-        if (
-            studentOverviewTableExists($db, 'classes') &&
-            studentOverviewColumnExists($db, 'classes', 'grade')
+            $placeholders = implode(',', array_fill(0, count($gradeVariants), '?'));
+            $roomExpr = studentOverviewColumnExists($db, 'timetable', 'room') ? 'COALESCE(room, \'\')' : "''";
+            $subjectExpr = studentOverviewColumnExists($db, 'timetable', 'subject') ? 'subject' : "'Class'";
+            $stmt = $db->prepare("
+                SELECT
+                    {$subjectExpr} AS class_name,
+                    grade,
+                    time_slot AS start_time,
+                    {$roomExpr} AS room
+                FROM timetable
+                WHERE grade IN ({$placeholders})
+                  AND day = ?
+                ORDER BY STR_TO_DATE(SUBSTRING_INDEX(time_slot, ' - ', 1), '%H:%i') ASC, id ASC
+            ");
+            $params = $gradeVariants;
+            $params[] = studentOverviewTodayName();
+            $stmt->execute($params);
+            $result['todays_classes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } elseif (
+            studentOverviewColumnExists($db, 'timetable', 'class_id') &&
+            studentOverviewColumnExists($db, 'timetable', 'class_date')
         ) {
-            $gradeExpr = 'c.grade';
+            $classNameExpr = "'Class'";
+            if (
+                studentOverviewTableExists($db, 'classes') &&
+                studentOverviewColumnExists($db, 'classes', 'id') &&
+                studentOverviewColumnExists($db, 'classes', 'name')
+            ) {
+                $classNameExpr = 'c.name';
+            }
+
+            $gradeExpr = "''";
+            if (
+                studentOverviewTableExists($db, 'classes') &&
+                studentOverviewColumnExists($db, 'classes', 'grade')
+            ) {
+                $gradeExpr = 'c.grade';
+            }
+
+            $roomExpr = studentOverviewColumnExists($db, 'timetable', 'room') ? 't.room' : "''";
+            $startExpr = studentOverviewColumnExists($db, 'timetable', 'start_time') ? 't.start_time' : "''";
+            $classJoin = studentOverviewTableExists($db, 'classes') ? ' LEFT JOIN classes c ON c.id = t.class_id ' : '';
+
+            $stmt = $db->prepare("
+                SELECT
+                    {$classNameExpr} AS class_name,
+                    {$gradeExpr} AS grade,
+                    {$startExpr} AS start_time,
+                    {$roomExpr} AS room
+                FROM timetable t
+                {$classJoin}
+                WHERE t.class_id IN (
+                    SELECT class_id FROM students WHERE id = ? AND class_id IS NOT NULL
+                )
+                  AND DATE(t.class_date) = CURDATE()
+                ORDER BY " . (studentOverviewColumnExists($db, 'timetable', 'start_time') ? 't.start_time ASC' : 't.id ASC')
+            );
+            $stmt->execute([$studentId]);
+            $result['todays_classes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
-
-        $roomExpr = studentOverviewColumnExists($db, 'timetable', 'room') ? 't.room' : "''";
-        $startExpr = studentOverviewColumnExists($db, 'timetable', 'start_time') ? 't.start_time' : "''";
-        $classJoin = studentOverviewTableExists($db, 'classes') ? ' LEFT JOIN classes c ON c.id = t.class_id ' : '';
-
-        $stmt = $db->prepare("
-            SELECT
-                {$classNameExpr} AS class_name,
-                {$gradeExpr} AS grade,
-                {$startExpr} AS start_time,
-                {$roomExpr} AS room
-            FROM timetable t
-            {$classJoin}
-            WHERE t.class_id IN (
-                SELECT class_id FROM students WHERE id = ? AND class_id IS NOT NULL
-            )
-              AND DATE(t.class_date) = CURDATE()
-            ORDER BY " . (studentOverviewColumnExists($db, 'timetable', 'start_time') ? 't.start_time ASC' : 't.id ASC')
-        );
-        $stmt->execute([$studentId]);
-        $result['todays_classes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     if (studentOverviewTableExists($db, 'announcements')) {
@@ -221,15 +347,7 @@ try {
         $result['announcements'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    $shouldUseMock =
-        (int) ($result['total_enrolled_classes'] ?? 0) === 0 &&
-        (int) ($result['attendance_percentage'] ?? 0) === 0 &&
-        (int) ($result['pending_payments_count'] ?? 0) === 0 &&
-        (int) ($result['upcoming_exams_count'] ?? 0) === 0 &&
-        empty($result['todays_classes']) &&
-        empty($result['announcements']);
-
-    echo json_encode($shouldUseMock ? studentMockOverview($studentId) : $result);
+    echo json_encode($result);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);

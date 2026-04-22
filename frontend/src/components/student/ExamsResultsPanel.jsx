@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from '../../api/axios';
 
+const TERM_OPTIONS = ['Term 1', 'Term 2', 'Term 3'];
+
 const styles = {
   section: {
     display: 'grid',
@@ -12,7 +14,12 @@ const styles = {
     background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%)',
     border: '1px solid #dbe7f2',
     boxShadow: '0 12px 24px rgba(15, 23, 42, 0.05)',
-    maxWidth: '320px',
+    minWidth: '220px',
+  },
+  summaryGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '16px',
   },
   summaryLabel: {
     display: 'block',
@@ -46,6 +53,26 @@ const styles = {
     color: '#0f172a',
     fontSize: '1.05rem',
     fontWeight: 800,
+  },
+  termTabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  termButton: {
+    minHeight: '42px',
+    padding: '0 16px',
+    borderRadius: '999px',
+    border: '1px solid #cbd5e1',
+    background: '#ffffff',
+    color: '#0f172a',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  termButtonActive: {
+    background: '#2563eb',
+    borderColor: '#2563eb',
+    color: '#ffffff',
   },
   table: {
     width: '100%',
@@ -102,6 +129,7 @@ const StudentExamsResultsPanel = ({ studentId }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('Term 1');
 
   useEffect(() => {
     if (!studentId) {
@@ -113,7 +141,7 @@ const StudentExamsResultsPanel = ({ studentId }) => {
     const fetchResults = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`/api/student_exams_results.php?student_id=${studentId}`);
+        const res = await axios.get(`/api/student_exams_results.php?student_id=${studentId}&term=${encodeURIComponent(selectedTerm)}`);
         setData(res.data || null);
         setError('');
       } catch (err) {
@@ -124,7 +152,11 @@ const StudentExamsResultsPanel = ({ studentId }) => {
     };
 
     fetchResults();
-  }, [studentId]);
+  }, [studentId, selectedTerm]);
+
+  const availableTerms = Array.isArray(data?.available_terms) && data.available_terms.length > 0
+    ? data.available_terms
+    : TERM_OPTIONS;
 
   if (loading) {
     return (
@@ -149,35 +181,52 @@ const StudentExamsResultsPanel = ({ studentId }) => {
 
   return (
     <div style={styles.section}>
-      <div style={styles.summaryCard}>
-        <span style={styles.summaryLabel}>Average Mark</span>
-        <p style={styles.summaryValue}>{Number(data?.average_mark ?? 0)}%</p>
+      <div style={styles.summaryGrid}>
+        <div style={styles.summaryCard}>
+          <span style={styles.summaryLabel}>Average Mark</span>
+          <p style={styles.summaryValue}>{Number(data?.average_mark ?? 0)}%</p>
+        </div>
+        <div style={styles.summaryCard}>
+          <span style={styles.summaryLabel}>Total Marks</span>
+          <p style={styles.summaryValue}>{Number(data?.total_marks_obtained ?? 0)}</p>
+        </div>
       </div>
 
       <div style={styles.tableWrap}>
         <div style={styles.tableHeader}>
           <h3 style={styles.tableTitle}>Exam Results</h3>
+          <div style={styles.termTabs}>
+            {availableTerms.map((term) => (
+              <button
+                key={term}
+                type="button"
+                style={{
+                  ...styles.termButton,
+                  ...(selectedTerm === term ? styles.termButtonActive : {}),
+                }}
+                onClick={() => setSelectedTerm(term)}
+              >
+                {term}
+              </button>
+            ))}
+          </div>
         </div>
         {Array.isArray(data?.results) && data.results.length > 0 ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={styles.table}>
               <thead>
                 <tr>
-                  <th style={styles.th}>Exam Name</th>
                   <th style={styles.th}>Subject</th>
                   <th style={styles.th}>Marks Obtained</th>
-                  <th style={styles.th}>Total Marks</th>
-                  <th style={styles.th}>Grade</th>
+                  <th style={styles.th}>Highest Marks</th>
                 </tr>
               </thead>
               <tbody>
                 {data.results.map((row, index) => (
-                  <tr key={`${row.exam_name}-${row.subject}-${index}`}>
-                    <td style={styles.td}>{row.exam_name}</td>
+                  <tr key={`${row.subject}-${index}`}>
                     <td style={styles.td}>{row.subject}</td>
                     <td style={styles.td}>{row.marks_obtained}</td>
-                    <td style={styles.td}>{row.total_marks}</td>
-                    <td style={styles.td}>{row.grade}</td>
+                    <td style={styles.td}>{row.highest_marks}</td>
                   </tr>
                 ))}
               </tbody>

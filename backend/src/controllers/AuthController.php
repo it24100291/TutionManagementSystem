@@ -33,9 +33,6 @@ class AuthController {
 
         $user = new User();
         $user->ensureRegistrationSchema();
-        if ($user->findByEmail($normalized['email'])) {
-            Response::error($this->duplicateEmailMessage($normalized['role']), 409);
-        }
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiresAt = (new DateTimeImmutable('+5 minutes'))->format('Y-m-d H:i:s');
@@ -146,7 +143,7 @@ class AuthController {
     private function normalizeRegistrationData(array $data): array {
         return [
             'full_name' => isset($data['full_name']) ? trim((string) $data['full_name']) : '',
-            'email' => isset($data['email']) ? trim((string) $data['email']) : '',
+            'email' => isset($data['email']) ? strtolower(trim((string) $data['email'])) : '',
             'password' => isset($data['password']) ? (string) $data['password'] : '',
             'role' => isset($data['role']) ? strtoupper(trim((string) $data['role'])) : '',
             'phone' => isset($data['phone']) ? trim((string) $data['phone']) : '',
@@ -244,10 +241,6 @@ class AuthController {
         $user = new User();
         $user->ensureRegistrationSchema();
 
-        if ($user->findByEmail($email)) {
-            Response::error($this->duplicateEmailMessage($role), 409);
-        }
-
         $roleId = $user->getRoleIdByName($role);
         if (!$roleId) {
             Response::error('Invalid role');
@@ -282,15 +275,6 @@ class AuthController {
 
         Response::success(['message' => 'Registration successful. Waiting for admin approval.'], 201);
     }
-
-    private function duplicateEmailMessage(string $role): string {
-        if ($role === 'STUDENT') {
-            return 'This student login email is already used. Use a unique student email and enter the shared parent email in the parent email field.';
-        }
-
-        return 'Email is already registered.';
-    }
-
     private function isAtLeastAge(string $dob, int $minimumAge): bool {
         $date = DateTimeImmutable::createFromFormat('Y-m-d', $dob);
         if (!$date || $date->format('Y-m-d') !== $dob) {
@@ -312,9 +296,10 @@ class AuthController {
         }
         
         $user = new User();
-        $userData = $user->findByEmail($email);
+        $user->ensureRegistrationSchema();
+        $userData = $user->findByCredentials($email, $password);
         
-        if (!$userData || !password_verify($password, $userData['password_hash'])) {
+        if (!$userData) {
             Response::error('Invalid credentials', 401);
         }
         

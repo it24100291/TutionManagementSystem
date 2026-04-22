@@ -117,20 +117,47 @@ const StudentOverviewPanel = ({ studentId }) => {
       return;
     }
 
-    const fetchOverview = async () => {
+    let isMounted = true;
+
+    const fetchOverview = async ({ silent = false } = {}) => {
       try {
-        setLoading(true);
+        if (!silent) {
+          setLoading(true);
+        }
+
         const res = await axios.get(`/api/student_overview.php?student_id=${studentId}`);
+        if (!isMounted) {
+          return;
+        }
+
         setData(res.data || null);
         setError('');
       } catch (err) {
+        if (!isMounted) {
+          return;
+        }
+
         setError(err.response?.data?.error || 'Failed to load overview');
       } finally {
-        setLoading(false);
+        if (!isMounted) {
+          return;
+        }
+
+        if (!silent) {
+          setLoading(false);
+        }
       }
     };
 
     fetchOverview();
+    const intervalId = window.setInterval(() => {
+      fetchOverview({ silent: true });
+    }, 30000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
   }, [studentId]);
 
   if (loading) {
@@ -185,14 +212,16 @@ const StudentOverviewPanel = ({ studentId }) => {
 
       <div style={styles.subCardGrid}>
         <section style={styles.panel}>
-          <h3 style={styles.panelTitle}>Today&apos;s Classes</h3>
+          <h3 style={styles.panelTitle}>Today's Classes</h3>
           {Array.isArray(data?.todays_classes) && data.todays_classes.length > 0 ? (
             <div style={styles.list}>
               {data.todays_classes.map((item, index) => (
                 <div key={`${item.class_name}-${item.start_time}-${index}`} style={styles.listRow}>
                   <div style={styles.listTitle}>{item.class_name}</div>
                   <div style={styles.listMeta}>
-                    {item.grade ? `${item.grade} · ` : ''}{item.start_time || 'Time not set'}{item.room ? ` · ${item.room}` : ''}
+                    {item.grade ? `${item.grade} | ` : ''}
+                    {item.start_time || 'Time not set'}
+                    {item.room ? ` | ${item.room}` : ''}
                   </div>
                 </div>
               ))}
@@ -210,7 +239,8 @@ const StudentOverviewPanel = ({ studentId }) => {
                 <div key={`${item.title}-${index}`} style={styles.listRow}>
                   <div style={styles.listTitle}>{item.title}</div>
                   <div style={styles.listMeta}>
-                    {item.created_at ? `${item.created_at} · ` : ''}{item.message}
+                    {item.created_at ? `${item.created_at} | ` : ''}
+                    {item.message}
                   </div>
                 </div>
               ))}

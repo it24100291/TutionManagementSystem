@@ -24,6 +24,7 @@ class User {
 
     public function ensureRegistrationSchema() {
         $this->ensureUserColumns();
+        $this->ensureEmailIsReusable();
         $this->ensureTutorTable();
         $this->ensureStudentTable();
     }
@@ -97,6 +98,26 @@ class User {
         $stmt = $this->db->prepare("SELECT u.*, r.name as role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ?");
         $stmt->execute([$email]);
         return $stmt->fetch();
+    }
+
+    public function findByCredentials($email, $password) {
+        $stmt = $this->db->prepare("
+            SELECT u.*, r.name as role_name
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+            WHERE u.email = ?
+            ORDER BY u.id DESC
+        ");
+        $stmt->execute([$email]);
+        $users = $stmt->fetchAll();
+
+        foreach ($users as $user) {
+            if (password_verify($password, $user['password_hash'])) {
+                return $user;
+            }
+        }
+
+        return null;
     }
     
     public function findById($id) {
@@ -250,6 +271,18 @@ class User {
             $stmt = $this->db->query("SHOW COLUMNS FROM users LIKE '{$escapedColumn}'");
             if (!$stmt->fetch()) {
                 $this->db->exec($sql);
+            }
+        }
+    }
+
+    private function ensureEmailIsReusable() {
+        $stmt = $this->db->query("SHOW INDEX FROM users WHERE Column_name = 'email' AND Non_unique = 0");
+        $indexes = $stmt->fetchAll();
+
+        foreach ($indexes as $index) {
+            $keyName = $index['Key_name'] ?? '';
+            if ($keyName !== '' && strtoupper($keyName) !== 'PRIMARY') {
+                $this->db->exec("ALTER TABLE users DROP INDEX `{$keyName}`");
             }
         }
     }

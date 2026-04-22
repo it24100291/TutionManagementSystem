@@ -205,6 +205,20 @@ const normalizeTerm = (term) => {
   return /^term\s*\d+$/i.test(value) ? value.replace(/^term\s*/i, 'Term ') : value;
 };
 
+const normalizeMarksValue = (value) => {
+  const trimmed = String(value ?? '').trim();
+  if (trimmed === '') {
+    return '';
+  }
+
+  const numericValue = Number(trimmed);
+  if (!Number.isFinite(numericValue)) {
+    return trimmed;
+  }
+
+  return String(Math.trunc(numericValue));
+};
+
 const ExaminationPanel = ({ tutorId }) => {
   const [optionsLoading, setOptionsLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(false);
@@ -312,7 +326,7 @@ const ExaminationPanel = ({ tutorId }) => {
         setStudents(fetchedStudents);
         setMarksByStudent(
           fetchedStudents.reduce((accumulator, row) => {
-            accumulator[row.student_id] = row.marks === '' || row.marks === null ? '' : String(row.marks);
+            accumulator[row.student_id] = row.marks === '' || row.marks === null ? '' : normalizeMarksValue(row.marks);
             return accumulator;
           }, {})
         );
@@ -340,7 +354,7 @@ const ExaminationPanel = ({ tutorId }) => {
   ], [students]);
 
   const handleMarksChange = (studentId, value) => {
-    const nextValue = value.replace(/[^\d.]/g, '');
+    const nextValue = value.replace(/[^\d]/g, '');
 
     if (nextValue === '') {
       setMarksByStudent((current) => ({
@@ -352,13 +366,9 @@ const ExaminationPanel = ({ tutorId }) => {
       return;
     }
 
-    if (!/^\d+(\.\d{0,2})?$/.test(nextValue)) {
-      return;
-    }
-
     const numericValue = Number(nextValue);
     if (Number.isNaN(numericValue) || numericValue < 0 || numericValue > 100) {
-      setError('Marks must be between 0 and 100.');
+      setError('Marks must be an integer between 0 and 100.');
       return;
     }
 
@@ -389,7 +399,7 @@ const ExaminationPanel = ({ tutorId }) => {
     }
 
     const hasInvalidMarks = marksPayload.some((row) => {
-      if (!/^\d+(\.\d+)?$/.test(row.marks)) {
+      if (!/^\d+$/.test(row.marks)) {
         return true;
       }
       const numericValue = Number(row.marks);
@@ -397,7 +407,7 @@ const ExaminationPanel = ({ tutorId }) => {
     });
 
     if (hasInvalidMarks) {
-      setError('Marks must be numeric and between 0 and 100.');
+      setError('Marks must be whole numbers between 0 and 100.');
       return;
     }
 
@@ -423,7 +433,7 @@ const ExaminationPanel = ({ tutorId }) => {
 
   const allStudentsMarked = students.length > 0 && students.every((student) => {
     const value = String(marksByStudent[student.student_id] ?? '').trim();
-    if (value === '' || !/^\d+(\.\d+)?$/.test(value)) {
+    if (value === '' || !/^\d+$/.test(value)) {
       return false;
     }
 
@@ -553,10 +563,10 @@ const ExaminationPanel = ({ tutorId }) => {
                             >
                               <input
                                 type="number"
-                                inputMode="decimal"
+                                inputMode="numeric"
                                 min="0"
                                 max="100"
-                                step="0.01"
+                                step="1"
                                 placeholder="0 - 100"
                                 value={marksByStudent[student.student_id] ?? ''}
                                 onChange={(event) => handleMarksChange(student.student_id, event.target.value)}

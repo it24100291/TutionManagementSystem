@@ -14,7 +14,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     exit;
 }
 
-function todayScheduleTableExists(PDO $db, string $tableName): bool {
+function tutorClassesTableExists(PDO $db, string $tableName): bool {
     $stmt = $db->prepare(" 
         SELECT COUNT(*)
         FROM information_schema.tables
@@ -24,7 +24,7 @@ function todayScheduleTableExists(PDO $db, string $tableName): bool {
     return (int) $stmt->fetchColumn() > 0;
 }
 
-function todayScheduleColumnExists(PDO $db, string $tableName, string $columnName): bool {
+function tutorClassesColumnExists(PDO $db, string $tableName, string $columnName): bool {
     $stmt = $db->prepare(" 
         SELECT COUNT(*)
         FROM information_schema.columns
@@ -51,15 +51,15 @@ try {
         exit;
     }
 
-    if (!todayScheduleTableExists($db, 'timetable')) {
-        echo json_encode(['day' => date('l'), 'rows' => []]);
+    if (!tutorClassesTableExists($db, 'timetable')) {
+        echo json_encode(['rows' => []]);
         exit;
     }
 
     $requiredColumns = ['id', 'grade', 'day', 'time_slot', 'subject', 'tutor_id'];
     foreach ($requiredColumns as $columnName) {
-        if (!todayScheduleColumnExists($db, 'timetable', $columnName)) {
-            echo json_encode(['day' => date('l'), 'rows' => []]);
+        if (!tutorClassesColumnExists($db, 'timetable', $columnName)) {
+            echo json_encode(['rows' => []]);
             exit;
         }
     }
@@ -68,7 +68,7 @@ try {
     $rawTutorId = (int) $inputTutorId;
     $resolvedIds[] = $rawTutorId;
 
-    if (todayScheduleTableExists($db, 'tutors') && todayScheduleColumnExists($db, 'tutors', 'id') && todayScheduleColumnExists($db, 'tutors', 'user_id')) {
+    if (tutorClassesTableExists($db, 'tutors') && tutorClassesColumnExists($db, 'tutors', 'id') && tutorClassesColumnExists($db, 'tutors', 'user_id')) {
         $resolveStmt = $db->prepare("SELECT id, user_id FROM tutors WHERE id = ? OR user_id = ? LIMIT 1");
         $resolveStmt->execute([$rawTutorId, $rawTutorId]);
         $resolvedTutor = $resolveStmt->fetch(PDO::FETCH_ASSOC);
@@ -80,9 +80,8 @@ try {
 
     $resolvedIds = array_values(array_unique(array_filter($resolvedIds)));
     $placeholders = implode(',', array_fill(0, count($resolvedIds), '?'));
-    $today = date('l');
+    $selectRoom = tutorClassesColumnExists($db, 'timetable', 'room') ? 'COALESCE(room, "N/A") AS room' : '"N/A" AS room';
 
-    $selectRoom = todayScheduleColumnExists($db, 'timetable', 'room') ? 'COALESCE(room, "N/A") AS room' : '"N/A" AS room';
     $stmt = $db->prepare(" 
         SELECT
             id,
@@ -93,16 +92,14 @@ try {
             {$selectRoom}
         FROM timetable
         WHERE tutor_id IN ({$placeholders})
-          AND day = ?
-        ORDER BY STR_TO_DATE(SUBSTRING_INDEX(time_slot, ' - ', 1), '%H:%i') ASC, id ASC
+        ORDER BY FIELD(day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') ASC,
+                 STR_TO_DATE(SUBSTRING_INDEX(time_slot, ' - ', 1), '%H:%i') ASC,
+                 id ASC
     ");
-    $params = $resolvedIds;
-    $params[] = $today;
-    $stmt->execute($params);
+    $stmt->execute($resolvedIds);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     echo json_encode([
-        'day' => $today,
         'rows' => array_map(static function (array $row): array {
             return [
                 'id' => (int) ($row['id'] ?? 0),
